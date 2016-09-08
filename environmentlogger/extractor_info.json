@@ -1,0 +1,13 @@
+{
+    "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
+    "name": "terra.environmentlogger",
+    "version": "1.0",
+    "description": "EnvironmentLogger to NetCDF extractor",
+    "author": "Max Burnette <mburnet2@illinois.edu>",
+    "contributors": [],
+    "contexts": [],
+    "repository": {"repType": "git", "repUrl": "https://opensource.ncsa.illinois.edu/stash/scm/cats/pyclowder.git"},
+    "external_services": [],
+    "dependencies": [],
+    "bibtex": []
+}
