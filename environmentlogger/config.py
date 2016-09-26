@@ -22,13 +22,18 @@ rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@127.0.0.1/%2f")
 rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
-messageType = "*.dataset.file.added"
+messageType = "*.file.application.json"
 
 # trust certificates, set this to false for self signed certificates
 sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)
 
 # Comma delimited list of endpoints and keys for registering extractor information
-registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "http://localhost:9000/clowder/api/extractors?key=key1, http://host2:9000/api/extractors?key=key2")
+registrationEndpoints = os.getenv('REGISTRATION_ENDPOINTS', "")
 
 # Path to script that contains modules to import
 scriptPath = "environmental_logger_json2netcdf.py"
+
+# Dictionary that maps {"remote Clowder source path": "local mounted path"} for streamlining Clowder downloads
+mountedPaths = {"/home/clowder/sites": "/home/extractor/sites"}
+
+outputDir = "/home/extractor/sites/ua-mac/Level_1/EnvironmentLogger"
