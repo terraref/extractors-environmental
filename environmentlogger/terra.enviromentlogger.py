@@ -70,7 +70,7 @@ def process_dataset(parameters):
     # if len(md) > 0:
         #extractors.remove_dataset_metadata_jsonld(parameters['host'], parameters['secretKey'], parameters['datasetId'], extractorName)
 
-    in_envlog = parameters['filepath']
+    in_envlog = parameters['inputfile']
 
     if in_envlog:
         # Execute processing on target file
