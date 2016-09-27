@@ -11,6 +11,7 @@ output file and add that to the same dataset as the original .json file.
 import os
 import imp
 import logging
+import requests
 
 from config import *
 import pyclowder.extractors as extractors
@@ -74,6 +75,18 @@ def process_dataset(parameters):
             ela.mainProgramTrigger(in_envlog, out_netcdf)
 
             # Send netCDF output to Clowder source dataset
+            if parameters['datasetId'] == '':
+                # Fetch datasetID by dataset name if not provided
+                dsName = 'EnvironmentLogger - ' + parameters['filename'].split('_')[0]
+                url = '%s/api/datasets?key=%s&title=%s' % (
+                    parameters['host'],
+                    parameters['secretKey'],
+                    dsName)
+                headers={'Content-Type': 'application/json'}
+                r = requests.get(url, headers=headers)
+                if r.status_code == 200:
+                    parameters['datasetId'] = r.json()[0]['id']
+
             extractors.upload_file_to_dataset(out_netcdf, parameters)
         else:
             print("...%s already exists; skipping" % out_netcdf)
