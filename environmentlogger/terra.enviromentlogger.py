@@ -49,15 +49,6 @@ def check_message(parameters):
     if not parameters['filename'].endswith("_environmentlogger.json"):
         return False
 
-    # For now if the dataset already has metadata from this extractor, don't recreate
-    md = extractors.download_dataset_metadata_jsonld(parameters['host'], parameters['secretKey'], parameters['datasetId'], extractorName)
-    if len(md) > 0:
-        for m in md:
-            if 'agent' in m and 'name' in m['agent']:
-                if m['agent']['name'].find(extractorName) > -1:
-                    print("skipping dataset %s, already processed" % parameters['datasetId'])
-                    return False
-
     return True
 
 
