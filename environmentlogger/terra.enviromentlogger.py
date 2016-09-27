@@ -76,13 +76,16 @@ def process_dataset(parameters):
         # Execute processing on target file
         timestamp = parameters['filename'].split("_")[0]
         out_netcdf = os.path.join(outputDir, timestamp, parameters['filename'][:-5]+".nc")
-        print("Converting JSON to: %s" % out_netcdf)
         if not os.path.exists(os.path.join(outputDir, timestamp)):
             os.makedirs(os.path.join(outputDir, timestamp))
-        ela.mainProgramTrigger(in_envlog, out_netcdf)
+        if not os.path.isfile(out_netcdf):
+            print("Converting JSON to: %s" % out_netcdf)
+            ela.mainProgramTrigger(in_envlog, out_netcdf)
 
-        # Send netCDF output to Clowder source dataset
-        extractors.upload_file_to_dataset(out_netcdf, parameters)
+            # Send netCDF output to Clowder source dataset
+            extractors.upload_file_to_dataset(out_netcdf, parameters)
+        else:
+            print("...%s already exists; skipping" % out_netcdf)
 
 if __name__ == "__main__":
     global scriptPath
