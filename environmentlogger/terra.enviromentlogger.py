@@ -17,15 +17,31 @@ import pyclowder.extractors as extractors
 
 
 def main():
-    global extractorName, messageType, rabbitmqExchange, rabbitmqURL, registrationEndpoints
+    global extractorName, messageType, rabbitmqExchange, rabbitmqURL, registrationEndpoints, mountedPaths
 
     #set logging
     logging.basicConfig(format='%(levelname)-7s : %(name)s -  %(message)s', level=logging.WARN)
     logging.getLogger('pyclowder.extractors').setLevel(logging.INFO)
+    logger = logging.getLogger('extractor')
+    logger.setLevel(logging.DEBUG)
+
+    # setup
+    extractors.setup(extractorName=extractorName,
+                     messageType=messageType,
+                     rabbitmqURL=rabbitmqURL,
+                     rabbitmqExchange=rabbitmqExchange,
+                     mountedPaths=mountedPaths)
+
+    # register extractor info
+    extractors.register_extractor(registrationEndpoints)
 
     #connect to rabbitmq
-    extractors.connect_message_bus(extractorName=extractorName, messageType=messageType, processFileFunction=process_dataset,
-        checkMessageFunction=check_message, rabbitmqExchange=rabbitmqExchange, rabbitmqURL=rabbitmqURL)
+    extractors.connect_message_bus(extractorName=extractorName,
+                                   messageType=messageType,
+                                   processFileFunction=process_dataset,
+                                   checkMessageFunction=check_message,
+                                   rabbitmqExchange=rabbitmqExchange,
+                                   rabbitmqURL=rabbitmqURL)
 
 # ----------------------------------------------------------------------
 def check_message(parameters):
