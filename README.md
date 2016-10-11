@@ -2,7 +2,6 @@
 
 This repository contains extractors that process data originating from:
 - GMP 343 CO2 sensor
-- Skye PRI sensor
 - Thies Clima environmental sensors
 - Maricopa lightning/irrigation/weather data
 
