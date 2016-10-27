@@ -28,6 +28,7 @@ docker run \
   -e REGISTRATION_ENDPOINTS=http://localhost:9000/clowder/api/extractors?key={SECRET_KEY} \
   terra-ext-environmentlogger
 ```
+Note that by default RabbitMQ will not allow "guest:guest" access to non-local addresses, which includes Docker. You may need to create an additional local RabbitMQ user for testing.
 
 _Running the image remotely_
 ```
