@@ -1,12 +1,6 @@
 FROM ubuntu
 MAINTAINER Max Burnette <mburnet2@illinois.edu>
 
-# ------------------------
-# From /environmentlogger directory:
-#     docker build -f Dockerfile -t terra-ext-environmentlogger .
-#     docker run -p 9000 -e RABBITMQ_URI=amqp://user:pass@<ip>/%2f terra-ext-environmentlogger
-# ------------------------
-
 # Install any programs needed
 RUN useradd -u 47852 extractor \
     && apt-get -y update \
