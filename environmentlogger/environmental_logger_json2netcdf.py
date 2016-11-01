@@ -73,8 +73,7 @@ import sys
 import os
 from datetime import date, datetime
 from netCDF4 import Dataset
-from CalculationWorks import *
-
+from environmental_logger_calculation import *
 
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
                     u"hPa": {"original":"hectopascal", "SI":"pascal", "power":1e2},
@@ -92,7 +91,10 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     u'ppm': {"original":"pascal meter-2", "SI":"pascal meter-2", "power":1}, 
                     '': ''}
 _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
+
 _UNIX_BASETIME = date(year=1970, month=1, day=1)
+
+_TIMESTAMP = lambda: time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time())))
 
 def JSONHandler(fileLocation):
     '''
@@ -104,10 +106,8 @@ def JSONHandler(fileLocation):
 
 def renameTheValue(name):
     '''
-    Rename the value so it becomes legal in netCDF
+    Rename the value so they are legal in netCDF
     '''
-    if type(name) is unicode:
-        name = name.encode('ascii', 'ignore')
     if name in _UNIT_DICTIONARY:
         name = _UNIT_DICTIONARY[name]
     elif name in _NAMES:
@@ -119,20 +119,32 @@ def renameTheValue(name):
 def getSpectrometerInformation(arrayOfJSON):
     '''
     Collect information from spectrometer with special care
+    these information contain:
+    1. max fixed intensity
+    2. integration time
     '''
-    maxFixedIntensity = [int(intensityMembers["spectrometer"]["maxFixedIntensity"]) for intensityMembers in arrayOfJSON]
-    integrationTime = [int(integrateMembers["spectrometer"]["integration time in ?s"]) for integrateMembers in arrayOfJSON]
+    maxFixedIntensity = [int(intensityMembers["spectrometer"]["maxFixedIntensity"])\
+                         for intensityMembers in arrayOfJSON]
+    integrationTime   = [int(integrateMembers["spectrometer"]["integration time in ?s"])\
+                         for integrateMembers in arrayOfJSON]
 
     return maxFixedIntensity, integrationTime
 
 
 def getListOfWeatherStationValue(arrayOfJSON, dataName):
     '''
-    Collect data from JSON objects which have "value" member
+    Collect data from weather station objects which have "value" member
+    these data are:
+    1. values
+    2. units
+    3. raw values
     '''
-    return [float(valueMembers["weather_station"][dataName]['value'].encode('ascii', 'ignore')) for valueMembers in arrayOfJSON],\
-           [_UNIT_DICTIONARY[valueMembers["weather_station"][dataName]['unit'].encode('ascii', 'ignore')]["SI"] for valueMembers in arrayOfJSON],\
-           [float(valueMembers["weather_station"][dataName]['rawValue'].encode('ascii', 'ignore')) for valueMembers in arrayOfJSON]
+    return [float(valueMembers["weather_station"][dataName]['value'])\
+            for valueMembers in arrayOfJSON],\
+           [_UNIT_DICTIONARY[valueMembers["weather_station"][dataName]['unit']]["SI"]\
+            for valueMembers in arrayOfJSON],\
+           [float(valueMembers["weather_station"][dataName]['rawValue'])\
+            for valueMembers in arrayOfJSON] 
 
 
 def handleSpectrometer(JSONArray):
@@ -141,8 +153,10 @@ def handleSpectrometer(JSONArray):
     '''
 
     wvl_lgr           = JSONArray[0]["spectrometer"]["wavelength"]
-    spectrum          = [valueMembers["spectrometer"]["spectrum"] for valueMembers in JSONArray]
-    maxFixedIntensity = [float(valueMembers["spectrometer"]["maxFixedIntensity"].encode('ascii', 'ignore')) for valueMembers in JSONArray]
+    spectrum          = [valueMembers["spectrometer"]["spectrum"]\
+                         for valueMembers in JSONArray]
+    maxFixedIntensity = [float(valueMembers["spectrometer"]["maxFixedIntensity"])\
+                         for valueMembers in JSONArray]
 
     return wvl_lgr, spectrum, maxFixedIntensity
 
@@ -150,18 +164,18 @@ def handleSpectrometer(JSONArray):
 def sensorVariables(JSONArray, sensors):
     '''
     return the variables start with "sensor"
+    these are:
+    1. values
+    2. units
+    3. raw values
     '''
 
-    return [float(valueMembers[sensors]['value'].encode('ascii', 'ignore')) for valueMembers in JSONArray],\
-           [_UNIT_DICTIONARY[valueMembers[sensors]['unit'].encode('ascii', 'ignore')]["SI"] for valueMembers in JSONArray],\
-           [float(valueMembers[sensors]['rawValue'].encode('ascii', 'ignore')) for valueMembers in JSONArray]
-
-
-def _timeStamp():
-    '''
-    Record the time the script is triggered
-    '''
-    return time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time())))
+    return [float(valueMembers[sensors]['value'])
+            for valueMembers in JSONArray],\
+           [_UNIT_DICTIONARY[valueMembers[sensors]['unit']]["SI"]
+            for valueMembers in JSONArray],\
+           [float(valueMembers[sensors]['rawValue'])
+            for valueMembers in JSONArray]
 
 
 def translateTime(timeString):
@@ -169,7 +183,7 @@ def translateTime(timeString):
     Translate the time the metadata included as the days offset to the basetime.
     '''
     timeUnpack = datetime.strptime(timeString, "%Y.%m.%d-%H:%M:%S").timetuple()
-    timeSplit = date(year=timeUnpack.tm_year, month=timeUnpack.tm_mon, day=timeUnpack.tm_mday) - _UNIX_BASETIME
+    timeSplit  = date(year=timeUnpack.tm_year, month=timeUnpack.tm_mon, day=timeUnpack.tm_mday) - _UNIX_BASETIME
 
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
@@ -178,126 +192,139 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
     '''
     Main netCDF handler, write data to the netCDF file indicated.
     '''
-    netCDFHandler    = Dataset(outputFileName, 'w', format='NETCDF4')
-    loggerFixedInfos = JSONArray["environment_sensor_fixed_infos"]
-    loggerReadings   = JSONArray["environment_sensor_readings"]
+    with Dataset(outputFileName, 'w', format='NETCDF4') as netCDFHandler:
+        loggerFixedInfos = JSONArray["environment_sensor_fixed_infos"]
+        loggerReadings   = JSONArray["environment_sensor_readings"]
 
-    for infos in loggerFixedInfos:
-        infosGroup = netCDFHandler.createGroup(infos)
-        for subInfos in loggerFixedInfos[infos]:
-            setattr(infosGroup, renameTheValue(infos + subInfos), loggerFixedInfos[infos][subInfos])
+        for infos, atttributes in loggerFixedInfos.items():
+            infosGroup = netCDFHandler.createGroup(infos)
+            for subInfos in atttributes:
+                setattr(infosGroup, renameTheValue("".join((infos, subInfos))), loggerFixedInfos[infos][subInfos])
 
-    netCDFHandler.createDimension("time", None)
+        netCDFHandler.createDimension("time", None)
 
-    weatherStationGroup = netCDFHandler.groups["weather_station"]
-    spectrometerGroup   = netCDFHandler.groups["spectrometer"]
-    for data in loggerReadings[0]["weather_station"].keys(): #writing the data from weather station
-        value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
-        valueVariable, rawValueVariable = weatherStationGroup.createVariable(data, "f4", ("time", )), weatherStationGroup.createVariable("raw_" + data, "f4", ("time", ))
-            
-        valueVariable[:]    = value
-        rawValueVariable[:] = rawValue
-        setattr(valueVariable, "units", unit[0])
+        weatherStationGroup = netCDFHandler.groups["weather_station"]
+        spectrometerGroup   = netCDFHandler.groups["spectrometer"]
+        for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
+            value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
+            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data,                   "f4", ("time", )),\
+                                            weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
+                
+            valueVariable[:]    = value
+            rawValueVariable[:] = rawValue
+            setattr(valueVariable, "units", unit[0])
 
-    wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
+        wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
-    netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
-    wavelengthVariable = spectrometerGroup.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
-    spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
-    intensityVariable  = spectrometerGroup.createVariable("maxFixedIntensity", "f4", ("time",))
+        netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
+        wavelengthVariable = spectrometerGroup.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
+        spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
+        intensityVariable  = spectrometerGroup.createVariable("maxFixedIntensity", "f4", ("time",))
 
-    wavelengthVariable[:] = wvl_lgr
-    spectrumVariable[:,:] = spectrum
-    intensityVariable[:]  = maxFixedIntensity
+        #TODO
+        #TODO add stanard names into the environmental loggers
+        wavelengthVariable[:] = wvl_lgr
+        setattr(wavelengthVariable, "units", "meter")
+        setattr(wavelengthVariable, "long_name", "wavelengths")
+        setattr(wavelengthVariable, "notes", "these wavelengths are all the same in different collections from the environmental logger. Ranging from 337.7 to 824 nm.")
+        spectrumVariable[:,:] = spectrum
+        setattr(spectrumVariable, "units", "placeholder")
+        setattr(spectrumVariable, "long_name", "spectrum")
+        setattr(spectrumVariable, "notes", "placeholder")
+        intensityVariable[:]  = maxFixedIntensity
+        setattr(intensityVariable, "units", "placeholder")
+        setattr(intensityVariable, "long_name", "max_fixed_intensity")
+        setattr(intensityVariable, "notes", "placeholder")
 
-    timeVariable = netCDFHandler.createVariable("time", 'f8', ('time',))
-    timeVariable[:] = [translateTime(data["timestamp"]) for data in loggerReadings]
-    setattr(timeVariable, "units",    "days since 1970-01-01 00:00:00")
-    setattr(timeVariable, "calender", "gregorian")
+        timeVariable = netCDFHandler.createVariable("time", 'f8', ('time',))
+        timeVariable[:] = [translateTime(data["timestamp"]) for data in loggerReadings]
+        setattr(timeVariable, "units",    "days since 1970-01-01 00:00:00")
+        setattr(timeVariable, "calender", "gregorian")
 
-    for data in loggerReadings[0]:
-        if data.startswith("sensor"):
-            if data.endswith("par"):
-                targetGroup = netCDFHandler.groups["par_sensor"]
-            else:
-                targetGroup = netCDFHandler.groups["co2_sensor"]
-            sensorValue, sensorUnit, sensorRaw = sensorVariables(loggerReadings, data)
-            sensorValueVariable                = targetGroup.createVariable(renameTheValue(data), "f4", ("time", ))
-            sensorRawValueVariable             = targetGroup.createVariable("raw_" + renameTheValue(data), "f4", ("time", ))
+        for data in loggerReadings[0]:
+            if data.startswith("sensor"): # par sensor or co2 sensor
+                targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
 
-            sensorValueVariable[:]    = sensorValue
-            sensorRawValueVariable[:] = sensorRaw
-            setattr(sensorValueVariable, "units", sensorUnit[0])
+                sensorValue, sensorUnit, sensorRaw = sensorVariables(loggerReadings, data)
+                sensorValueVariable                = targetGroup.createVariable(renameTheValue(data),                    "f4", ("time", ))
+                sensorRawValueVariable             = targetGroup.createVariable("".join(("raw_", renameTheValue(data))), "f4", ("time", ))
 
-    wvl_ntf  = [np.average([wvl_lgr[i], wvl_lgr[i+1]]) for i in range(len(wvl_lgr)-1)]
-    delta    = [wvl_ntf[i+1] - wvl_ntf[i] for i in range(len(wvl_ntf) - 1)]
-    delta.insert(0, 2*(wvl_ntf[0] - wvl_lgr[0]))
-    delta.insert(-1, 2*(wvl_lgr[-1] - wvl_ntf[-1]))
+                sensorValueVariable[:]    = sensorValue
+                sensorRawValueVariable[:] = sensorRaw
+                setattr(sensorValueVariable, "units", sensorUnit[0])
 
-    # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
-    # Details in CalculationWorks.py
-    downwellingSpectralFlux, downwellingFlux = calculateDownwellingSpectralFlux(wvl_lgr, spectrum)
+        wvl_ntf  = [np.average([wvl_lgr[i], wvl_lgr[i+1]]) for i in range(len(wvl_lgr)-1)]
+        delta    = [wvl_ntf[i+1] - wvl_ntf[i] for i in range(len(wvl_ntf) - 1)]
+        delta.insert(0, 2*(wvl_ntf[0] - wvl_lgr[0]))
+        delta.insert(-1, 2*(wvl_lgr[-1] - wvl_ntf[-1]))
 
-    # Add data from hyperspectral_calibration.nco
-    netCDFHandler.createVariable("wvl_dlt", 'f8', ("wvl_lgr",))[:] = delta
-    setattr(netCDFHandler.variables['wvl_dlt'], 'units', 'meter')
-    setattr(netCDFHandler.variables['wvl_dlt'], 'notes',"Bandwidth, also called dispersion, is between 0.455-0.495 nm across all channels. Values computed as differences between midpoints of adjacent band-centers.")
-    setattr(netCDFHandler.variables['wvl_dlt'], 'long_name', "Bandwidth of environmental sensor")
+        # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
+        # Details in CalculationWorks.py
+        downwellingSpectralFlux, downwellingFlux = calculateDownwellingSpectralFlux(wvl_lgr, spectrum, delta)
 
-    netCDFHandler.createVariable("flx_sns", "f4", ("wvl_lgr",))[:] = np.array(FLX_SNS) * 1e-6
-    setattr(netCDFHandler.variables['flx_sns'],'units', 'watt meter-2 count-1')
-    setattr(netCDFHandler.variables['flx_sns'],'long_name','Flux sensitivity of each band (irradiance per count)')
-    setattr(netCDFHandler.variables['flx_sns'], 'provenance', "EnvironmentalLogger calibration information from file S05673_08062015.IrradCal provided by TinoDornbusch and discussed here: https://github.com/terraref/reference-data/issues/30#issuecomment-217518434")
+        # Add data from hyperspectral_calibration.nco
+        netCDFHandler.createVariable("wvl_dlt", 'f8', ("wvl_lgr",))[:] = delta
+        setattr(netCDFHandler.variables['wvl_dlt'], 'units', 'meter')
+        setattr(netCDFHandler.variables['wvl_dlt'], 'notes',"Bandwidth, also called dispersion, is between 0.455-0.495 nm across all channels. Values computed as differences between midpoints of adjacent band-centers.")
+        setattr(netCDFHandler.variables['wvl_dlt'], 'long_name', "Bandwidth of environmental sensor")
 
-    netCDFHandler.createVariable("flx_spc_dwn", 'f4', ('time','wvl_lgr'))[:,:] = downwellingSpectralFlux
-    setattr(netCDFHandler.variables['flx_spc_dwn'],'units', 'watt meter-2 meter-1')
-    setattr(netCDFHandler.variables['flx_spc_dwn'], 'long_name', 'Downwelling Spectral Irradiance')
+        netCDFHandler.createVariable("flx_sns", "f4", ("wvl_lgr",))[:] = np.array(FLX_SNS) * 1e-6
+        setattr(netCDFHandler.variables['flx_sns'],'units', 'watt meter-2 count-1')
+        setattr(netCDFHandler.variables['flx_sns'],'long_name','Flux sensitivity of each band (irradiance per count)')
+        setattr(netCDFHandler.variables['flx_sns'], 'provenance', "EnvironmentalLogger calibration information from file S05673_08062015.IrradCal provided by TinoDornbusch and discussed here: https://github.com/terraref/reference-data/issues/30#issuecomment-217518434")
 
-    # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
-    netCDFHandler.createVariable("flx_dwn", 'f4').assignValue(downwellingFlux)
-    setattr(netCDFHandler.variables["flx_dwn"], "units", "watt meter-2")
-    setattr(netCDFHandler.variables['flx_dwn'], 'long_name', 'Downwelling Irradiance')
+        netCDFHandler.createVariable("flx_spc_dwn", 'f4', ('time','wvl_lgr'))[:,:] = downwellingSpectralFlux
+        setattr(netCDFHandler.variables['flx_spc_dwn'],'units', 'watt meter-2 meter-1')
+        setattr(netCDFHandler.variables['flx_spc_dwn'], 'long_name', 'Downwelling Spectral Irradiance')
 
-    # #Other Constants used in calculation
-    # #Integration Time
-    netCDFHandler.createVariable("time_integration", 'f4').assignValue(float(loggerReadings[0]["spectrometer"]["integration time in us"])/1.0e-6)
-    setattr(netCDFHandler.variables["time_integration"], "units", "second")
-    setattr(netCDFHandler.variables['time_integration'], 'long_name', 'Spectrometer integration time')
+        # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
+        netCDFHandler.createVariable("flx_dwn", 'f4')[...] = downwellingFlux
+        setattr(netCDFHandler.variables["flx_dwn"], "units", "watt meter-2")
+        setattr(netCDFHandler.variables['flx_dwn'], 'long_name', 'Downwelling Irradiance')
 
-    # #Spectrometer area
-    netCDFHandler.createVariable("area_sensor", "f4").assignValue(AREA)
-    setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
-    setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
+        # #Other Constants used in calculation
+        # #Integration Time
+        netCDFHandler.createVariable("time_integration", 'f4')[...] = float(loggerReadings[0]["spectrometer"]["integration time in us"]) / 1.0e-6
+        setattr(netCDFHandler.variables["time_integration"], "units", "second")
+        setattr(netCDFHandler.variables['time_integration'], 'long_name', 'Spectrometer integration time')
 
-    netCDFHandler.history = recordTime + ': python ' + commandLine
-    netCDFHandler.close()
+        # #Spectrometer area
+        netCDFHandler.createVariable("area_sensor", "f4")[...] = AREA
+        setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
+        setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
+
+        netCDFHandler.history = "".join((recordTime, ': python ', commandLine))
 
 
 def mainProgramTrigger(fileInputLocation, fileOutputLocation):
     '''
     This function will trigger the whole script
     '''
+    startPoint = time.clock()
     if not os.path.exists(fileOutputLocation) and not fileOutputLocation.endswith('.nc'):
         os.mkdir(fileOutputLocation)  # Create folder
 
     if not os.path.isdir(fileInputLocation) or fileOutputLocation.endswith('.nc'):
-        print "Processing", fileInputLocation + '....'
+        print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, recordTime=_timeStamp(), commandLine=fileInputLocation + ' ' + fileOutputLocation)
+            main(tempJSONMasterList, fileOutputLocation, recordTime=_TIMESTAMP(), commandLine="".join((sys.argv[1], ' ', sys.argv[2])))
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  outputFileName.strip('.json') + '.nc'), recordTime=_timeStamp(), commandLine=fileInputLocation + ' ' + fileOutputLocation)
+            print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))), recordTime=_TIMESTAMP(), commandLine="".join((sys.argv[1], ' ', sys.argv[2])))
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
                 if os.path.join(filePath, members).endswith('.json'):
-                    print "Processing", members + '....'
-                    outputFileName = members.strip('.json') + '.nc'
+                    print "\nProcessing", "".join((members, '....')),"\n","-" * (len(members) + 15)
+                    outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), recordTime=_timeStamp(), commandLine=fileInputLocation + ' ' + fileOutputLocation)
-
-
+                    print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), recordTime=_TIMESTAMP(), commandLine="".join((sys.argv[1], ' ', sys.argv[2])))
+    
+    endPoint = time.clock()
+    print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
 
 if __name__ == '__main__':
     mainProgramTrigger(sys.argv[1], sys.argv[2])
