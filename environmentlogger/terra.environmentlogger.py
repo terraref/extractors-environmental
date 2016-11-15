@@ -81,7 +81,7 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                     logging.error('no parent dataset ID found; unable to upload to Clowder')
                     raise Exception('no parent dataset ID found')
             else:
-                logging.info("...%s already exists; skipping" % out_netcdf)
+                logging.info("%s already exists; skipping" % out_netcdf)
 
 if __name__ == "__main__":
     extractor = EnvironmentLoggerJSON2NetCDF()
