@@ -25,6 +25,11 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         # add any additional arguments to parser
         # self.parser.add_argument('--max', '-m', type=int, nargs='?', default=-1,
         #                          help='maximum number (default=-1)')
+        self.parser.add_argument('--output', '-o', dest="output_dir", type=str, nargs='?',
+                                 default="/home/extractor/sites/ua-mac/Level_1/EnvironmentLogger",
+                                 help="root directory where timestamp & output directories will be created")
+        self.parser.add_argument('--overwrite', dest="force_overwrite", type=bool, nargs='?', default=False,
+                                 help="whether to overwrite output file if it already exists in output directory")
 
         # parse command line and load default logging configuration
         self.setup()
@@ -32,6 +37,10 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         # setup logging for the exctractor
         logging.getLogger('pyclowder').setLevel(logging.DEBUG)
         logging.getLogger('__main__').setLevel(logging.DEBUG)
+
+        # assign other arguments
+        self.output_dir = self.args.output_dir
+        self.force_overwrite = self.args.force_overwrite
 
     def check_message(self, connector, host, secret_key, resource, parameters):
         # Only trigger extraction if the newly added file is a relevant JSON file
@@ -41,40 +50,38 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         return True
 
     def process_message(self, connector, host, secret_key, resource, parameters):
-        # TODO: provide some flag to determine overwrite&replace vs. skip?
-        # TODO: re-enable once this is merged into Clowder: https://opensource.ncsa.illinois.edu/bitbucket/projects/CATS/repos/clowder/pull-requests/883/overview
-        # fetch metadata from dataset to check if we should remove existing entry for this extractor first
-        # md = extractors.download_dataset_metadata_jsonld(parameters['host'], parameters['secretKey'], parameters['datasetId'], extractorName)
-        # if len(md) > 0:
-        #extractors.remove_dataset_metadata_jsonld(parameters['host'], parameters['secretKey'], parameters['datasetId'], extractorName)
-
+        # path to input JSON file
         in_envlog = resource['local_paths'][0]
 
         if in_envlog:
-            # Execute processing on target file
+            # Prepare output directory path - "output_dir/YYYY-MM-DD/filename.nc"
             timestamp = resource['name'].split("_")[0]
-            outputDir = "/home/extractor/sites/ua-mac/Level_1/EnvironmentLogger"
-            out_netcdf = os.path.join(outputDir, timestamp, resource['name'][:-5]+".nc")
-            if not os.path.exists(os.path.join(outputDir, timestamp)):
-                os.makedirs(os.path.join(outputDir, timestamp))
-            if not os.path.isfile(out_netcdf):
-                print("Converting JSON to: %s" % out_netcdf)
+            out_netcdf = os.path.join(self.output_dir, timestamp, resource['name'][:-5]+".nc")
+            if not os.path.exists(os.path.join(self.output_dir, timestamp)):
+                os.makedirs(os.path.join(self.output_dir, timestamp))
+
+            # Create netCDF if it doesn't exist
+            if not os.path.isfile(out_netcdf) or self.force_overwrite:
+                logging.info("converting JSON to: %s" % out_netcdf)
                 ela.mainProgramTrigger(in_envlog, out_netcdf)
 
-                # Send netCDF output to Clowder source dataset
+                # Fetch dataset ID by dataset name if not provided
                 if resource['parent_dataset_id'] == '':
-                    # Fetch datasetID by dataset name if not provided
-                    dsName = 'EnvironmentLogger - ' + resource['name'].split('_')[0]
-                    url = '%s/api/datasets?key=%s&title=%s' % (host, secret_key, dsName)
-                    headers={'Content-Type': 'application/json'}
-
-                    r = requests.get(url, headers=headers)
+                    ds_name = 'EnvironmentLogger - ' + resource['name'].split('_')[0]
+                    url = '%s/api/datasets?key=%s&title=%s' % (host, secret_key, ds_name)
+                    r = requests.get(url, headers={'Content-Type': 'application/json'})
                     if r.status_code == 200:
                         resource['parent_dataset_id'] = r.json()[0]['id']
 
-                pyclowder.files.upload_to_dataset(connector, host, secret_key, resource['parent_dataset_id'], out_netcdf)
+                if 'parent_dataset_id' in resource and resource['parent_dataset_id'] != '':
+                    logging.info("uploading netCDF file to Clowder")
+                    pyclowder.files.upload_to_dataset(connector, host, secret_key,
+                                                      resource['parent_dataset_id'], out_netcdf)
+                else:
+                    logging.error('no parent dataset ID found; unable to upload to Clowder')
+                    raise Exception('no parent dataset ID found')
             else:
-                print("...%s already exists; skipping" % out_netcdf)
+                logging.info("...%s already exists; skipping" % out_netcdf)
 
 if __name__ == "__main__":
     extractor = EnvironmentLoggerJSON2NetCDF()
