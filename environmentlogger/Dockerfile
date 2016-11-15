@@ -13,8 +13,8 @@ RUN useradd -u 47852 extractor \
     && mkdir /home/extractor \
     && chown -R extractor /home/extractor \
     && cd /home/extractor \
-    && git clone https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/pyclowder.git \
-    && cd pyclowder \
+    && git clone https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/pyclowder2.git \
+    && cd pyclowder2 \
     && python setup.py install
 
 # command to run when starting docker
