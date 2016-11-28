@@ -9,7 +9,7 @@ RUN useradd -u 47852 extractor \
                              libblas-dev liblapack-dev libatlas-base-dev gfortran \
     #&& usr/bin/yes | apt-get build-dep python-matplotlib \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install pika requests numpy urllib3 netcdf \
+    && pip install pika requests numpy urllib3 netcdf enum pyyaml \
     && mkdir /home/extractor \
     && chown -R extractor /home/extractor \
     && cd /home/extractor \
