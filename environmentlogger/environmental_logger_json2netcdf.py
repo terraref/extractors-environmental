@@ -308,11 +308,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, recordTime=_TIMESTAMP(), commandLine="".join((sys.argv[1], ' ', sys.argv[2])))
+            main(tempJSONMasterList, fileOutputLocation, recordTime=_TIMESTAMP(), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))), recordTime=_TIMESTAMP(), commandLine="".join((sys.argv[1], ' ', sys.argv[2])))
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))), recordTime=_TIMESTAMP(), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -321,7 +321,7 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), recordTime=_TIMESTAMP(), commandLine="".join((sys.argv[1], ' ', sys.argv[2])))
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), recordTime=_TIMESTAMP(), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
