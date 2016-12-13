@@ -31,4 +31,4 @@ CMD ["extractor"]
 ENV RABBITMQ_EXCHANGE="terra" \
     RABBITMQ_VHOST="%2F" \
     RABBITMQ_QUEUE="terra.environmentlogger" \
-    MAIN_SCRIPT="terra.environmentlogger.py"
+    MAIN_SCRIPT="terra_environmentlogger.py"
