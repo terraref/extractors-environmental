@@ -1,0 +1,13 @@
+[Unit]
+Description=EnvironmentLogger to NetCDF Extractor
+After=network.target
+
+[Service]
+User=extractor
+Group=users
+Restart=on-failure
+WorkingDirectory=/home/extractor/extractors-environmental/environmentlogger
+ExecStart=/usr/bin/python /home/extractor/extractors-environmental/environmentlogger/terra_environmentlogger.py
+
+[Install]
+WantedBy=multi-user.target
