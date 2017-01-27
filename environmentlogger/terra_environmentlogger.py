@@ -66,17 +66,17 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                 ela.mainProgramTrigger(in_envlog, out_netcdf)
 
                 # Fetch dataset ID by dataset name if not provided
-                if resource['parent_dataset_id'] == '':
+                if resource['parent']['id'] == '':
                     ds_name = 'EnvironmentLogger - ' + resource['name'].split('_')[0]
                     url = '%s/api/datasets?key=%s&title=%s' % (host, secret_key, ds_name)
                     r = requests.get(url, headers={'Content-Type': 'application/json'})
                     if r.status_code == 200:
-                        resource['parent_dataset_id'] = r.json()[0]['id']
+                        resource['parent']['id'] = r.json()[0]['id']
 
-                if 'parent_dataset_id' in resource and resource['parent_dataset_id'] != '':
+                if 'parent' in resource and resource['parent']['id'] != '':
                     logging.info("uploading netCDF file to Clowder")
                     pyclowder.files.upload_to_dataset(connector, host, secret_key,
-                                                      resource['parent_dataset_id'], out_netcdf)
+                                                      resource['parent']['id'], out_netcdf)
                 else:
                     logging.error('no parent dataset ID found; unable to upload to Clowder')
                     raise Exception('no parent dataset ID found')
