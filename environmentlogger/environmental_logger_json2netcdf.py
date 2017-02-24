@@ -262,6 +262,8 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
                 sensorValueVariable[:]    = sensorValue
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
+                if renameTheValue(data) in _CF_STANDARDS:
+                    setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
 
         wvl_ntf  = [np.average([wvl_lgr[i], wvl_lgr[i+1]]) for i in range(len(wvl_lgr)-1)]
         delta    = [wvl_ntf[i+1] - wvl_ntf[i] for i in range(len(wvl_ntf) - 1)]
