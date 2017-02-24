@@ -94,7 +94,7 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
 _CF_STANDARDS    = {u'precipitation' : "liquid_water_equivalent_precipitation_rate",
                     u'airPressure'   : "air_pressure",
                     u'relHumidity'   : "relative_humidity",
-                    u"windDirection" : "wind_to_direction"}
+                    u"windDirection" : "wind_from_direction"}
 
 _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
 
