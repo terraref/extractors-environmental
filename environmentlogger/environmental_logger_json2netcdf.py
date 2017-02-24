@@ -268,17 +268,17 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         downwellingSpectralFlux, downwellingFlux = calculateDownwellingSpectralFlux(wvl_lgr, spectrum, delta)
 
         # Add data from hyperspectral_calibration.nco
-        netCDFHandler.createVariable("wvl_dlt", 'f8', ("wvl_lgr",))[:] = delta
+        netCDFHandler.createVariable("wvl_dlt", 'f8', ("wavelength",))[:] = delta
         setattr(netCDFHandler.variables['wvl_dlt'], 'units', 'meter')
         setattr(netCDFHandler.variables['wvl_dlt'], 'notes',"Bandwidth, also called dispersion, is between 0.455-0.495 nm across all channels. Values computed as differences between midpoints of adjacent band-centers.")
         setattr(netCDFHandler.variables['wvl_dlt'], 'long_name', "Bandwidth of environmental sensor")
 
-        netCDFHandler.createVariable("flx_sns", "f4", ("wvl_lgr",))[:] = np.array(FLX_SNS) * 1e-6
+        netCDFHandler.createVariable("flx_sns", "f4", ("wavelength",))[:] = np.array(FLX_SNS) * 1e-6
         setattr(netCDFHandler.variables['flx_sns'],'units', 'watt meter-2 count-1')
         setattr(netCDFHandler.variables['flx_sns'],'long_name','Flux sensitivity of each band (irradiance per count)')
         setattr(netCDFHandler.variables['flx_sns'], 'provenance', "EnvironmentalLogger calibration information from file S05673_08062015.IrradCal provided by TinoDornbusch and discussed here: https://github.com/terraref/reference-data/issues/30#issuecomment-217518434")
 
-        netCDFHandler.createVariable("flx_spc_dwn", 'f4', ('time','wvl_lgr'))[:,:] = downwellingSpectralFlux
+        netCDFHandler.createVariable("flx_spc_dwn", 'f4', ('time','wavelength'))[:,:] = downwellingSpectralFlux
         setattr(netCDFHandler.variables['flx_spc_dwn'],'units', 'watt meter-2 meter-1')
         setattr(netCDFHandler.variables['flx_spc_dwn'], 'long_name', 'Downwelling Spectral Irradiance')
         setattr(netCDFHandler.variables['flx_spc_dwn'], 'standard_name', 'downwelling_spectral_spherical_irradiance_in_air')
