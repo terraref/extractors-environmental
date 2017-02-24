@@ -88,8 +88,15 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     u'degrees': {"original":"degree", "SI":"degree", "power":1}, 
                     u'?s': {"original":"microsecond", "SI":"second", "power":1e-6}, 
                     u'us': {"original":"microsecond", "SI":"second", "power":1e-6},
-                    u'ppm': {"original":"pascal meter-2", "SI":"pascal meter-2", "power":1}, 
+                    u'ppm': {"original":"part per million", "SI":"mol mol-1", "power":1e-6}, 
                     '': ''}
+
+_CF_STANDARDS    = {u'precipitation' : "precipitation_flux",
+                    u'airPressure'   : "air_pressure",
+                    u'relHumidity'   : "relative_humidity",
+                    u"windDirection" : "wind_from_direction",
+                    u"sensor_co2"    : "mole_fraction_of_carbon_dioxide_in_air"}
+
 _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
 
 _UNIX_BASETIME = date(year=1970, month=1, day=1)
@@ -207,12 +214,14 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         spectrometerGroup   = netCDFHandler.groups["spectrometer"]
         for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
             value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
-            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data,                   "f4", ("time", )),\
-                                            weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
+            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data, "f4", ("time", )),\
+                                              weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
                 
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
+            if data in _CF_STANDARDS:
+                setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
@@ -226,6 +235,7 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         wavelengthVariable[:] = wvl_lgr
         setattr(wavelengthVariable, "units", "meter")
         setattr(wavelengthVariable, "long_name", "wavelengths")
+        setattr(wavelengthVariable, "standard_name", "radiation_wavelength")
         setattr(wavelengthVariable, "notes", "these wavelengths are all the same in different collections from the environmental logger. Ranging from 337.7 to 824 nm.")
         spectrumVariable[:,:] = spectrum
         setattr(spectrumVariable, "units", "placeholder")
@@ -252,6 +262,8 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
                 sensorValueVariable[:]    = sensorValue
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
+                if renameTheValue(data) in _CF_STANDARDS:
+                    setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
 
         wvl_ntf  = [np.average([wvl_lgr[i], wvl_lgr[i+1]]) for i in range(len(wvl_lgr)-1)]
         delta    = [wvl_ntf[i+1] - wvl_ntf[i] for i in range(len(wvl_ntf) - 1)]
@@ -276,11 +288,13 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         netCDFHandler.createVariable("flx_spc_dwn", 'f4', ('time','wvl_lgr'))[:,:] = downwellingSpectralFlux
         setattr(netCDFHandler.variables['flx_spc_dwn'],'units', 'watt meter-2 meter-1')
         setattr(netCDFHandler.variables['flx_spc_dwn'], 'long_name', 'Downwelling Spectral Irradiance')
+        setattr(netCDFHandler.variables['flx_spc_dwn'], 'standard_name', 'downwelling_spectral_spherical_irradiance_in_air')
 
         # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
         netCDFHandler.createVariable("flx_dwn", 'f4')[...] = downwellingFlux
         setattr(netCDFHandler.variables["flx_dwn"], "units", "watt meter-2")
         setattr(netCDFHandler.variables['flx_dwn'], 'long_name', 'Downwelling Irradiance')
+        setattr(netCDFHandler.variables['flx_dwn'], 'standard_name', 'downwelling_spherical_irradiance_in_air')
 
         # #Other Constants used in calculation
         # #Integration Time
