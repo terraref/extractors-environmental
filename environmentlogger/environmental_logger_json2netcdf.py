@@ -90,6 +90,11 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     u'us': {"original":"microsecond", "SI":"second", "power":1e-6},
                     u'ppm': {"original":"pascal meter-2", "SI":"pascal meter-2", "power":1}, 
                     '': ''}
+
+_CF_STANDARDS    = {u'precipitation' : "liquid_water_equivalent_precipitation_rate",
+                    u'airPressure'   : "air_pressure"
+                    u'relHumidity'   : "relative_humidity"}
+
 _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
 
 _UNIX_BASETIME = date(year=1970, month=1, day=1)
@@ -216,9 +221,9 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
-        netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
-        wavelengthVariable = spectrometerGroup.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
-        spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
+        netCDFHandler.createDimension("wavelength", len(wvl_lgr))
+        wavelengthVariable = spectrometerGroup.createVariable("wavelength", "f4", ("wavelength",))
+        spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wavelength"))
         intensityVariable  = spectrometerGroup.createVariable("maxFixedIntensity", "f4", ("time",))
 
         #TODO
@@ -276,11 +281,13 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         netCDFHandler.createVariable("flx_spc_dwn", 'f4', ('time','wvl_lgr'))[:,:] = downwellingSpectralFlux
         setattr(netCDFHandler.variables['flx_spc_dwn'],'units', 'watt meter-2 meter-1')
         setattr(netCDFHandler.variables['flx_spc_dwn'], 'long_name', 'Downwelling Spectral Irradiance')
+        setattr(netCDFHandler.variables['flx_spc_dwn'], 'standard_name', 'downwelling_spectral_spherical_irradiance_in_air')
 
         # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
         netCDFHandler.createVariable("flx_dwn", 'f4')[...] = downwellingFlux
         setattr(netCDFHandler.variables["flx_dwn"], "units", "watt meter-2")
         setattr(netCDFHandler.variables['flx_dwn'], 'long_name', 'Downwelling Irradiance')
+        setattr(netCDFHandler.variables['flx_dwn'], 'standard_name', 'downwelling_spherical_irradiance_in_air')
 
         # #Other Constants used in calculation
         # #Integration Time
