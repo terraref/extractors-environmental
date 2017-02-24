@@ -88,7 +88,7 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     u'degrees': {"original":"degree", "SI":"degree", "power":1}, 
                     u'?s': {"original":"microsecond", "SI":"second", "power":1e-6}, 
                     u'us': {"original":"microsecond", "SI":"second", "power":1e-6},
-                    u'ppm': {"original":"part per million", "SI":"umol mol-1", "power":1}, 
+                    u'ppm': {"original":"part per million", "SI":"mol mol-1", "power":1e-6}, 
                     '': ''}
 
 _CF_STANDARDS    = {u'precipitation' : "precipitation_flux",
