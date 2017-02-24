@@ -218,6 +218,8 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
+            if data in _CF_STANDARDS:
+                setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
