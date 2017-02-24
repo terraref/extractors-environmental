@@ -225,7 +225,7 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
         netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
-        wavelengthVariable = spectrometerGroup.createVariable("wavelength", "f4", ("wvl_lgr",))
+        wavelengthVariable = spectrometerGroup.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
         spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
         intensityVariable  = spectrometerGroup.createVariable("maxFixedIntensity", "f4", ("time",))
 
