@@ -88,13 +88,14 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     u'degrees': {"original":"degree", "SI":"degree", "power":1}, 
                     u'?s': {"original":"microsecond", "SI":"second", "power":1e-6}, 
                     u'us': {"original":"microsecond", "SI":"second", "power":1e-6},
-                    u'ppm': {"original":"pascal meter-2", "SI":"pascal meter-2", "power":1}, 
+                    u'ppm': {"original":"part per million", "SI":"umol mol-1", "power":1}, 
                     '': ''}
 
-_CF_STANDARDS    = {u'precipitation' : "liquid_water_equivalent_precipitation_rate",
+_CF_STANDARDS    = {u'precipitation' : "precipitation_flux",
                     u'airPressure'   : "air_pressure",
                     u'relHumidity'   : "relative_humidity",
-                    u"windDirection" : "wind_from_direction"}
+                    u"windDirection" : "wind_from_direction",
+                    u"sensor_co2"    : "mole_fraction_of_carbon_dioxide_in_air"}
 
 _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
 
