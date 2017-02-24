@@ -92,7 +92,7 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     '': ''}
 
 _CF_STANDARDS    = {u'precipitation' : "liquid_water_equivalent_precipitation_rate",
-                    u'airPressure'   : "air_pressure"
+                    u'airPressure'   : "air_pressure",
                     u'relHumidity'   : "relative_humidity"}
 
 _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
@@ -212,8 +212,8 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         spectrometerGroup   = netCDFHandler.groups["spectrometer"]
         for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
             value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
-            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data,                   "f4", ("time", )),\
-                                            weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
+            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data, "f4", ("time", )),\
+                                              weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
                 
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
