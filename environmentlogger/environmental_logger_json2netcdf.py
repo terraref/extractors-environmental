@@ -195,7 +195,7 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, recordTime=None, commandLine=None):
+def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
     '''
@@ -307,7 +307,7 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
         setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
 
-        netCDFHandler.history = "".join((recordTime, ': python ', commandLine))
+        netCDFHandler.history = "".join((_TIMESTAMP(), ': python ', commandLine))
 
 
 def mainProgramTrigger(fileInputLocation, fileOutputLocation):
@@ -322,11 +322,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, recordTime=_TIMESTAMP(), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
+            main(tempJSONMasterList, fileOutputLocation, commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))), recordTime=_TIMESTAMP(), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -335,7 +335,7 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), recordTime=_TIMESTAMP(), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine="".join((fileInputLocation, ' ', fileOutputLocation)))
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
