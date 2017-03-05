@@ -203,32 +203,37 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         loggerFixedInfos = JSONArray["environment_sensor_fixed_infos"]
         loggerReadings   = JSONArray["environment_sensor_readings"]
 
-        for infos, atttributes in loggerFixedInfos.items():
-            infosGroup = netCDFHandler.createGroup(infos)
-            for subInfos in atttributes:
-                setattr(infosGroup, renameTheValue("".join((infos, subInfos))), loggerFixedInfos[infos][subInfos])
+        # for infos, atttributes in loggerFixedInfos.items():
+        #     # infosGroup = netCDFHandler.createGroup(infos)
+        #     for subInfos in atttributes:
+        #         setattr(infosGroup, renameTheValue("".join((infos, subInfos))), loggerFixedInfos[infos][subInfos])
 
         netCDFHandler.createDimension("time", None)
 
-        weatherStationGroup = netCDFHandler.groups["weather_station"]
-        spectrometerGroup   = netCDFHandler.groups["spectrometer"]
+        # weatherStationGroup = netCDFHandler.groups["weather_station"]
+        # spectrometerGroup   = netCDFHandler.groups["spectrometer"]
         for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
             value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
-            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data, "f4", ("time", )),\
-                                              weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
+            valueVariable, rawValueVariable = netCDFHandler.createVariable(data, "f4", ("time", )),\
+                                              netCDFHandler.createVariable("".join(("raw_",data)), "f4", ("time", ))
                 
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
+            setattr(valueVariable, "sensor", "weather_station")
             if data in _CF_STANDARDS:
                 setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
         netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
-        wavelengthVariable = spectrometerGroup.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
-        spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
-        intensityVariable  = spectrometerGroup.createVariable("maxFixedIntensity", "f4", ("time",))
+        wavelengthVariable = netCDFHandler.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
+        setattr(wavelengthVariable, "sensor", "spectrometer")
+        spectrumVariable   = netCDFHandler.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
+        setattr(spectrumVariable, "sensor", "spectrometer")
+        intensityVariable  = netCDFHandler.createVariable("maxFixedIntensity", "f4", ("time",))
+        setattr(intensityVariable, "sensor", "spectrometer")
+
 
         #TODO
         #TODO add stanard names into the environmental loggers
@@ -253,15 +258,16 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         for data in loggerReadings[0]:
             if data.startswith("sensor"): # par sensor or co2 sensor
-                targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
+                # targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
 
                 sensorValue, sensorUnit, sensorRaw = sensorVariables(loggerReadings, data)
-                sensorValueVariable                = targetGroup.createVariable(renameTheValue(data),                    "f4", ("time", ))
-                sensorRawValueVariable             = targetGroup.createVariable("".join(("raw_", renameTheValue(data))), "f4", ("time", ))
+                sensorValueVariable                = netCDFHandler.createVariable(renameTheValue(data),                    "f4", ("time", ))
+                sensorRawValueVariable             = netCDFHandler.createVariable("".join(("raw_", renameTheValue(data))), "f4", ("time", ))
 
                 sensorValueVariable[:]    = sensorValue
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
+                setattr(sensorValueVariable, "sensor", data)
                 if renameTheValue(data) in _CF_STANDARDS:
                     setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
 
