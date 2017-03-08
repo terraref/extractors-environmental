@@ -313,7 +313,7 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
         setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
 
-        netCDFHandler.history = " ".join((_TIMESTAMP(), ': python ', commandLine))
+        netCDFHandler.history = " ".join((_TIMESTAMP(), ': python', commandLine))
 
 
 def mainProgramTrigger(fileInputLocation, fileOutputLocation):
@@ -328,11 +328,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, commandLine="".join(sys.argv))
+            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv))
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine="".join(sys.argv))
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv))
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -341,7 +341,7 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine="".join(sys.argv))
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv))
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
