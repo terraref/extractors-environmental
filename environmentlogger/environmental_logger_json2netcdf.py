@@ -146,9 +146,11 @@ def getListOfWeatherStationValue(arrayOfJSON, dataName):
     2. units
     3. raw values
     '''
-    return [float(valueMembers["weather_station"][dataName]['value'])\
-            for valueMembers in arrayOfJSON],\
-           [_UNIT_DICTIONARY[valueMembers["weather_station"][dataName]['unit']]["SI"]\
+    converting_to = _UNIT_DICTIONARY[arrayOfJSON[0]["weather_station"][dataName]['unit']]
+    
+    return np.array([float(valueMembers["weather_station"][dataName]['value'])\
+            for valueMembers in arrayOfJSON])*converting_to["power"],\
+           [converting_to["SI"]\
             for valueMembers in arrayOfJSON],\
            [float(valueMembers["weather_station"][dataName]['rawValue'])\
             for valueMembers in arrayOfJSON] 
@@ -176,10 +178,11 @@ def sensorVariables(JSONArray, sensors):
     2. units
     3. raw values
     '''
+    converting_to = _UNIT_DICTIONARY[JSONArray[0][sensors]['unit']]
 
-    return [float(valueMembers[sensors]['value'])
-            for valueMembers in JSONArray],\
-           [_UNIT_DICTIONARY[valueMembers[sensors]['unit']]["SI"]
+    return np.array([float(valueMembers[sensors]['value'])
+            for valueMembers in JSONArray])*converting_to["power"],\
+           [converting_to["SI"]
             for valueMembers in JSONArray],\
            [float(valueMembers[sensors]['rawValue'])
             for valueMembers in JSONArray]
