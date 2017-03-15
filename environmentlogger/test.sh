@@ -10,8 +10,8 @@ GREEN='\033[0;32m'
 END='\033[0m'
 
 ##### Check if the account has Python and gdal-stack (which contains NumPy and netCDF4 and HDF5)
-$(module list | grep "python/2.7.10" | wc -m) || module load python/2.7.10;
-$(module list | grep "gdal-stack/2.7.10" | wc -m) || module load gdal-stack/2.7.10;
+[[ $(module list | grep "python/2.7.10" | wc -m) -gt 0 ]] || module load python/2.7.10;
+[[ $(module list | grep "gdal-stack/2.7.10" | wc -m) -gt 0 ]] || module load gdal-stack/2.7.10;
 
 # Split the command into an array since it is tooooo looooooong
 # --For readability
@@ -29,5 +29,5 @@ python environmental_logger_json2netcdf.py
 END
 )
 ##### Run the command #####
-eval "${command[@]}" && echo -e "${GREEN}Test Run Successfully Exited${END}" && rm 2016-10-15_19-56-57_environmentlogger.nc\
-|| echo -e "${RED}Test Run Failed${END}";
+eval "${command[@]}" && (>&1 echo -e "${GREEN}Test Run Successfully Exited${END}") && rm 2016-10-15_19-56-57_environmentlogger.nc\
+|| (>&2 echo -e "${RED}Test Run Failed${END}");
