@@ -71,9 +71,12 @@ import json
 import time
 import sys
 import os
+import argparse
 from datetime import date, datetime
-from netCDF4 import Dataset
+from netCDF4  import Dataset
 from environmental_logger_calculation import *
+from environmental_geostream import push_to_geostream
+
 
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
                     u"hPa": {"original":"hectopascal", "SI":"pascal", "power":1e2},
@@ -101,7 +104,7 @@ _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
 
 _UNIX_BASETIME = date(year=1970, month=1, day=1)
 
-_TIMESTAMP = lambda: time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time())))
+API_KEY = None
 
 def JSONHandler(fileLocation):
     '''
@@ -198,7 +201,8 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None):
+@push_to_geostream(sensor_name="Full Field - Environmental Logger")
+def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None, secret_key=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
     '''
@@ -316,8 +320,9 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
         setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
 
-        netCDFHandler.history = " ".join((_TIMESTAMP(), ': python', commandLine))
+        netCDFHandler.history = " ".join((time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time()))), ': python', commandLine))
 
+        return outputFileName, secret_key
 
 def mainProgramTrigger(fileInputLocation, fileOutputLocation):
     '''
@@ -331,11 +336,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv))
+            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv), secret_key=API_KEY)
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv))
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv), secret_key=API_KEY)
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -344,10 +349,21 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv))
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv), secret_key=API_KEY)
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
 
 if __name__ == '__main__':
-    mainProgramTrigger(sys.argv[1], sys.argv[2])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file_path', type=str, nargs=1,
+                             help='The path to the raw environmental logger records (JSON format)')
+    parser.add_argument('output_file_path', type=str, nargs=1, default=".",
+                             help='The path to the environmental logger final outputs you want (netCDF format, Level 1 Data)')
+    parser.add_argument('Clowder_API_key', type=str, nargs='?', default=None,
+                             help='The secret key (if you have one) to the Clowder API to push the data to the geostream')
+
+    args = parser.parse_args()
+    API_KEY = args.Clowder_API_key
+
+    mainProgramTrigger(args.input_file_path[0], args.output_file_path[0])
