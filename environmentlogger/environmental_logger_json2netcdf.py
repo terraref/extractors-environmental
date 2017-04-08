@@ -219,6 +219,14 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         # weatherStationGroup = netCDFHandler.groups["weather_station"]
         # spectrometerGroup   = netCDFHandler.groups["spectrometer"]
+        weather_station_attr = {"id"         :"5873a9724f0cad7d8131b4d3",
+                                "name"       :"Thies CLIMA",
+                                "description":"This dataset contains documentation, datasheets, and metadata about the Theis CLIMA sensor.",
+                                "created"    :"Mon Jan 09 09:17:06 CST 2017",
+                                "thumbnail"  :"5873a97f4f0cad7d8131b56d",
+                                "authorId"   :"578f76948e7e1aecb7cad4c5",
+                                "spaces"     :[]}
+
         for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
             value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
             valueVariable, rawValueVariable = netCDFHandler.createVariable(data, "f4", ("time", )),\
@@ -227,7 +235,8 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
-            setattr(valueVariable, "sensor", "weather_station")
+            for key, value in weather_station_attr.items():
+                setattr(valueVariable, "sensor_"+key, value)
             if data in _CF_STANDARDS:
                 setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
 
@@ -265,7 +274,21 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         for data in loggerReadings[0]:
             if data.startswith("sensor"): # par sensor or co2 sensor
-                # targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
+                sensor_co2_attr = {"id"         :"5873a9924f0cad7d8131b648",
+                                   "name"       :"Vaisala CO2",
+                                   "description":"This dataset contains documentation, datasheets, and metadata about the Viasala CO2 sensor.",
+                                   "created"    :"Mon Jan 09 09:17:38 CST 2017",
+                                   "thumbnail"  :"5873a99e4f0cad7d8131b6dc",
+                                   "authorId"   :"578f76948e7e1aecb7cad4c5",
+                                   "spaces"     :[]}
+
+                sensor_par_attr = {"id"         :"5873a8ce4f0cad7d8131ad86",
+                                   "name"       :"Quantum PAR",
+                                   "description":"This dataset contains documentation, datasheets, and metadata about the Quantum PAR sensor.",
+                                   "created"    :"Mon Jan 09 09:14:22 CST 2017",
+                                   "thumbnail"  :"None",
+                                   "authorId"   :"578f76948e7e1aecb7cad4c5",
+                                   "spaces"     :[]}
 
                 sensorValue, sensorUnit, sensorRaw = sensorVariables(loggerReadings, data)
                 sensorValueVariable                = netCDFHandler.createVariable(renameTheValue(data),                    "f4", ("time", ))
@@ -274,7 +297,13 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
                 sensorValueVariable[:]    = sensorValue
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
-                setattr(sensorValueVariable, "sensor", data)
+                if data.endswith("co2"):
+                    for key, value in sensor_co2_attr.items():
+                        setattr(sensorValueVariable, "sensor_"+key, value)
+                else:
+                    for key, value in sensor_par_attr.items():
+                        setattr(sensorValueVariable, "sensor_"+key, value)
+
                 if renameTheValue(data) in _CF_STANDARDS:
                     setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
 
