@@ -29,5 +29,12 @@ python environmental_logger_json2netcdf.py
 END
 )
 ##### Run the command #####
-eval "${command[@]}" && (>&1 echo -e "${GREEN}Test Run Successfully Exited${END}") && rm 2016-10-15_19-56-57_environmentlogger.nc\
-|| (>&2 echo -e "${RED}Test Run Failed${END}");
+eval "${command[@]}" 
+
+if [ $? != 0 ]; then
+    (>&2 echo -e "${RED}Test Run Failed${END}");
+    exit 1;
+else
+    (>&1 echo -e "${GREEN}Test Run Successfully Exited${END}") && rm 2016-10-15_19-56-57_environmentlogger.nc;
+    exit 0;
+fi
