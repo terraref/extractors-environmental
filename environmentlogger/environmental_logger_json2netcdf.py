@@ -242,13 +242,24 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
+        spectro_attr = {"id"         :"5873a9174f0cad7d8131b09a",
+                        "name"       :"Skye PRI",
+                        "description":"This dataset contains documentation, datasheets, and metadata about the Skye PRI sensor.",
+                        "created"    :"Mon Jan 09 09:15:35 CST 2017",
+                        "thumbnail"  :"None",
+                        "authorId"   :"578f76948e7e1aecb7cad4c5",
+                        "spaces"     :[]}
+
         netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
         wavelengthVariable = netCDFHandler.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
-        setattr(wavelengthVariable, "sensor", "spectrometer")
+        for key, value in spectro_attr.items():
+            setattr(wavelengthVariable, "sensor_"+key, value)
         spectrumVariable   = netCDFHandler.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
-        setattr(spectrumVariable, "sensor", "spectrometer")
+        for key, value in spectro_attr.items():
+            setattr(spectrumVariable, "sensor_"+key, value)
         intensityVariable  = netCDFHandler.createVariable("maxFixedIntensity", "f4", ("time",))
-        setattr(intensityVariable, "sensor", "spectrometer")
+        for key, value in spectro_attr.items():
+            setattr(intensityVariable, "sensor_"+key, value)
 
 
         #TODO
