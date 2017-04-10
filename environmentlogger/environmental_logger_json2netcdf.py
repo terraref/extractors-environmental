@@ -146,9 +146,11 @@ def getListOfWeatherStationValue(arrayOfJSON, dataName):
     2. units
     3. raw values
     '''
-    return [float(valueMembers["weather_station"][dataName]['value'])\
-            for valueMembers in arrayOfJSON],\
-           [_UNIT_DICTIONARY[valueMembers["weather_station"][dataName]['unit']]["SI"]\
+    converting_to = _UNIT_DICTIONARY[arrayOfJSON[0]["weather_station"][dataName]['unit']]
+    
+    return np.array([float(valueMembers["weather_station"][dataName]['value'])\
+            for valueMembers in arrayOfJSON])*converting_to["power"],\
+           [converting_to["SI"]\
             for valueMembers in arrayOfJSON],\
            [float(valueMembers["weather_station"][dataName]['rawValue'])\
             for valueMembers in arrayOfJSON] 
@@ -176,10 +178,11 @@ def sensorVariables(JSONArray, sensors):
     2. units
     3. raw values
     '''
+    converting_to = _UNIT_DICTIONARY[JSONArray[0][sensors]['unit']]
 
-    return [float(valueMembers[sensors]['value'])
-            for valueMembers in JSONArray],\
-           [_UNIT_DICTIONARY[valueMembers[sensors]['unit']]["SI"]
+    return np.array([float(valueMembers[sensors]['value'])
+            for valueMembers in JSONArray])*converting_to["power"],\
+           [converting_to["SI"]
             for valueMembers in JSONArray],\
            [float(valueMembers[sensors]['rawValue'])
             for valueMembers in JSONArray]
@@ -195,7 +198,7 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None):
+def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
     '''
@@ -203,32 +206,37 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         loggerFixedInfos = JSONArray["environment_sensor_fixed_infos"]
         loggerReadings   = JSONArray["environment_sensor_readings"]
 
-        for infos, atttributes in loggerFixedInfos.items():
-            infosGroup = netCDFHandler.createGroup(infos)
-            for subInfos in atttributes:
-                setattr(infosGroup, renameTheValue("".join((infos, subInfos))), loggerFixedInfos[infos][subInfos])
+        # for infos, atttributes in loggerFixedInfos.items():
+        #     # infosGroup = netCDFHandler.createGroup(infos)
+        #     for subInfos in atttributes:
+        #         setattr(infosGroup, renameTheValue("".join((infos, subInfos))), loggerFixedInfos[infos][subInfos])
 
         netCDFHandler.createDimension("time", None)
 
-        weatherStationGroup = netCDFHandler.groups["weather_station"]
-        spectrometerGroup   = netCDFHandler.groups["spectrometer"]
+        # weatherStationGroup = netCDFHandler.groups["weather_station"]
+        # spectrometerGroup   = netCDFHandler.groups["spectrometer"]
         for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
             value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
-            valueVariable, rawValueVariable = weatherStationGroup.createVariable(data, "f4", ("time", )),\
-                                              weatherStationGroup.createVariable("".join(("raw_",data)), "f4", ("time", ))
+            valueVariable, rawValueVariable = netCDFHandler.createVariable(data, "f4", ("time", )),\
+                                              netCDFHandler.createVariable("".join(("raw_",data)), "f4", ("time", ))
                 
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
+            setattr(valueVariable, "sensor", "weather_station")
             if data in _CF_STANDARDS:
                 setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
         netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
-        wavelengthVariable = spectrometerGroup.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
-        spectrumVariable   = spectrometerGroup.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
-        intensityVariable  = spectrometerGroup.createVariable("maxFixedIntensity", "f4", ("time",))
+        wavelengthVariable = netCDFHandler.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
+        setattr(wavelengthVariable, "sensor", "spectrometer")
+        spectrumVariable   = netCDFHandler.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
+        setattr(spectrumVariable, "sensor", "spectrometer")
+        intensityVariable  = netCDFHandler.createVariable("maxFixedIntensity", "f4", ("time",))
+        setattr(intensityVariable, "sensor", "spectrometer")
+
 
         #TODO
         #TODO add stanard names into the environmental loggers
@@ -253,15 +261,16 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         for data in loggerReadings[0]:
             if data.startswith("sensor"): # par sensor or co2 sensor
-                targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
+                # targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
 
                 sensorValue, sensorUnit, sensorRaw = sensorVariables(loggerReadings, data)
-                sensorValueVariable                = targetGroup.createVariable(renameTheValue(data),                    "f4", ("time", ))
-                sensorRawValueVariable             = targetGroup.createVariable("".join(("raw_", renameTheValue(data))), "f4", ("time", ))
+                sensorValueVariable                = netCDFHandler.createVariable(renameTheValue(data),                    "f4", ("time", ))
+                sensorRawValueVariable             = netCDFHandler.createVariable("".join(("raw_", renameTheValue(data))), "f4", ("time", ))
 
                 sensorValueVariable[:]    = sensorValue
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
+                setattr(sensorValueVariable, "sensor", data)
                 if renameTheValue(data) in _CF_STANDARDS:
                     setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
 
@@ -307,7 +316,7 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
         setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
 
-        netCDFHandler.history = "".join((_TIMESTAMP(), ': python ', "".join((fileInputLocation, ' ', fileOutputLocation))))
+        netCDFHandler.history = " ".join((_TIMESTAMP(), ': python', commandLine))
 
 
 def mainProgramTrigger(fileInputLocation, fileOutputLocation):
@@ -322,11 +331,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation)
+            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv))
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))))
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv))
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -335,7 +344,7 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName))
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv))
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
