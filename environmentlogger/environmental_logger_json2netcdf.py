@@ -71,9 +71,12 @@ import json
 import time
 import sys
 import os
+import argparse
 from datetime import date, datetime
-from netCDF4 import Dataset
+from netCDF4  import Dataset
 from environmental_logger_calculation import *
+from environmental_geostream import push_to_geostream
+
 
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
                     u"hPa": {"original":"hectopascal", "SI":"pascal", "power":1e2},
@@ -101,7 +104,7 @@ _NAMES = {'sensor par': 'Sensor Photosynthetically Active Radiation'}
 
 _UNIX_BASETIME = date(year=1970, month=1, day=1)
 
-_TIMESTAMP = lambda: time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time())))
+API_KEY = None
 
 def JSONHandler(fileLocation):
     '''
@@ -198,7 +201,8 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None):
+@push_to_geostream(sensor_name="Full Field - Environmental Logger")
+def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None, secret_key=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
     '''
@@ -215,6 +219,14 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         # weatherStationGroup = netCDFHandler.groups["weather_station"]
         # spectrometerGroup   = netCDFHandler.groups["spectrometer"]
+        weather_station_attr = {"id"         :"5873a9724f0cad7d8131b4d3",
+                                "name"       :"Thies CLIMA",
+                                "description":"This dataset contains documentation, datasheets, and metadata about the Theis CLIMA sensor.",
+                                "created"    :"Mon Jan 09 09:17:06 CST 2017",
+                                "thumbnail"  :"5873a97f4f0cad7d8131b56d",
+                                "authorId"   :"578f76948e7e1aecb7cad4c5",
+                                "spaces"     :[]}
+
         for data in loggerReadings[0]["weather_station"]: #writing the data from weather station
             value, unit, rawValue           = getListOfWeatherStationValue(loggerReadings, data)
             valueVariable, rawValueVariable = netCDFHandler.createVariable(data, "f4", ("time", )),\
@@ -223,19 +235,31 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
             valueVariable[:]    = value
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
-            setattr(valueVariable, "sensor", "weather_station")
+            for key, value in weather_station_attr.items():
+                setattr(valueVariable, "sensor_"+key, value)
             if data in _CF_STANDARDS:
                 setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
+        spectro_attr = {"id"         :"5873a9174f0cad7d8131b09a",
+                        "name"       :"Skye PRI",
+                        "description":"This dataset contains documentation, datasheets, and metadata about the Skye PRI sensor.",
+                        "created"    :"Mon Jan 09 09:15:35 CST 2017",
+                        "thumbnail"  :"None",
+                        "authorId"   :"578f76948e7e1aecb7cad4c5",
+                        "spaces"     :[]}
+
         netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
         wavelengthVariable = netCDFHandler.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
-        setattr(wavelengthVariable, "sensor", "spectrometer")
+        for key, value in spectro_attr.items():
+            setattr(wavelengthVariable, "sensor_"+key, value)
         spectrumVariable   = netCDFHandler.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
-        setattr(spectrumVariable, "sensor", "spectrometer")
+        for key, value in spectro_attr.items():
+            setattr(spectrumVariable, "sensor_"+key, value)
         intensityVariable  = netCDFHandler.createVariable("maxFixedIntensity", "f4", ("time",))
-        setattr(intensityVariable, "sensor", "spectrometer")
+        for key, value in spectro_attr.items():
+            setattr(intensityVariable, "sensor_"+key, value)
 
 
         #TODO
@@ -261,7 +285,21 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
 
         for data in loggerReadings[0]:
             if data.startswith("sensor"): # par sensor or co2 sensor
-                # targetGroup = netCDFHandler.groups["par_sensor"] if data.endswith("par") else netCDFHandler.groups["co2_sensor"]
+                sensor_co2_attr = {"id"         :"5873a9924f0cad7d8131b648",
+                                   "name"       :"Vaisala CO2",
+                                   "description":"This dataset contains documentation, datasheets, and metadata about the Viasala CO2 sensor.",
+                                   "created"    :"Mon Jan 09 09:17:38 CST 2017",
+                                   "thumbnail"  :"5873a99e4f0cad7d8131b6dc",
+                                   "authorId"   :"578f76948e7e1aecb7cad4c5",
+                                   "spaces"     :[]}
+
+                sensor_par_attr = {"id"         :"5873a8ce4f0cad7d8131ad86",
+                                   "name"       :"Quantum PAR",
+                                   "description":"This dataset contains documentation, datasheets, and metadata about the Quantum PAR sensor.",
+                                   "created"    :"Mon Jan 09 09:14:22 CST 2017",
+                                   "thumbnail"  :"None",
+                                   "authorId"   :"578f76948e7e1aecb7cad4c5",
+                                   "spaces"     :[]}
 
                 sensorValue, sensorUnit, sensorRaw = sensorVariables(loggerReadings, data)
                 sensorValueVariable                = netCDFHandler.createVariable(renameTheValue(data),                    "f4", ("time", ))
@@ -270,7 +308,13 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
                 sensorValueVariable[:]    = sensorValue
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
-                setattr(sensorValueVariable, "sensor", data)
+                if data.endswith("co2"):
+                    for key, value in sensor_co2_attr.items():
+                        setattr(sensorValueVariable, "sensor_"+key, value)
+                else:
+                    for key, value in sensor_par_attr.items():
+                        setattr(sensorValueVariable, "sensor_"+key, value)
+
                 if renameTheValue(data) in _CF_STANDARDS:
                     setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
 
@@ -316,8 +360,9 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
         setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
 
-        netCDFHandler.history = " ".join((_TIMESTAMP(), ': python', commandLine))
+        netCDFHandler.history = " ".join((time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time()))), ': python', commandLine))
 
+        return outputFileName, secret_key
 
 def mainProgramTrigger(fileInputLocation, fileOutputLocation):
     '''
@@ -331,11 +376,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv))
+            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv), secret_key=API_KEY)
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv))
+            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv), secret_key=API_KEY)
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -344,10 +389,21 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv))
+                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv), secret_key=API_KEY)
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
 
 if __name__ == '__main__':
-    mainProgramTrigger(sys.argv[1], sys.argv[2])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input_file_path', type=str, nargs=1,
+                             help='The path to the raw environmental logger records (JSON format)')
+    parser.add_argument('output_file_path', type=str, nargs=1, default=".",
+                             help='The path to the environmental logger final outputs you want (netCDF format, Level 1 Data)')
+    parser.add_argument('Clowder_API_key', type=str, nargs='?', default=None,
+                             help='The secret key (if you have one) to the Clowder API to push the data to the geostream')
+
+    args = parser.parse_args()
+    API_KEY = args.Clowder_API_key
+
+    mainProgramTrigger(args.input_file_path[0], args.output_file_path[0])
