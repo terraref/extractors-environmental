@@ -13,7 +13,12 @@ import requests
 
 from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
+from pyclowder.geostreams import *
 import pyclowder.files
+import pyclowder.geostreams
+
+from netCDF4  import Dataset
+from datetime import datetime, timedelta
 
 import environmental_logger_json2netcdf as ela
 
@@ -80,8 +85,76 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                 else:
                     logging.error('no parent dataset ID found; unable to upload to Clowder')
                     raise Exception('no parent dataset ID found')
-            else:
+
+                # Push to geostreams
+                self.prepareDatapoint(connector, host, secret_key, resource, out_netcdf)
+
+
+        else:
                 logging.info("%s already exists; skipping" % out_netcdf)
+
+def _produce_attr_dict(netCDF_variable_obj):
+    '''
+    Produce a list of dictionary with attributes and value (Each dictionary is one datapoint)
+    '''
+    attributes = [attr for attr in dir(netCDF_variable_obj) if isinstance(attr, unicode)]
+    result     = {name:getattr(netCDF_variable_obj, name) for name in attributes}
+
+    return [dict(result.items()+ {"value":str(data)}.items()) for data in netCDF_variable_obj[...]]
+
+def prepareDatapoint(self, connector, host, secret_key, resource, ncdf):
+    coords = [-111.974304, 33.075576, 0]
+
+    with Dataset(ncdf, "r") as netCDF_handle:
+        sensor_id = get_sensor_by_name(connector, host, secret_key, "Full Field - Environmental Logger")
+        if not sensor_id:
+            sensor_id = create_sensor(host, secret_key, "Full Field - Environmental Logger", {
+                "type": "Point",
+                "coordinates": coords
+            })
+
+        stream_list = set([getattr(data, u'sensor') for data in netCDF_handle.variables.values() if u'sensor' in dir(data)])
+        for stream in stream_list:
+            # STREAM is plot x instrument
+            stream_name = "EnvLog %s - Full Field" % stream
+            stream_id = get_stream_id(host, secret_key, stream_name)
+            if not stream_id:
+                stream_id = create_stream(host, secret_key, sensor_id, stream_name, {
+                    "type": "Point",
+                    "coordinates": coords
+                })
+
+            for members in netCDF_handle.get_variables_by_attributes(sensor=stream):
+                data_points = _produce_attr_dict(members)
+
+                for index in range(len(data_points)):
+                    time_format = "%Y-%m-%dT%H:%M:%s-07:00"
+                    time_point = (datetime(year=1970, month=1, day=1) + \
+                                  timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
+
+                    # Actual data to be sent to Geostreams
+                    body = {"start_time": time_point,
+                            "end_time": time_point,
+                            "type": "Point",
+                            # TODO: Make this send the FOV polygon once Clowder supports it
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": coords
+                            },
+                            "properties": data_points[index],
+                            "stream_id": str(stream_id)
+                            }
+
+                    # Make the POST
+                    r = requests.post(os.path.join(host,'api/geostreams/datapoints?key=%s' % secret_key),
+                                      data=json.dumps(body),
+                                      headers={'Content-type': 'application/json'})
+
+                    if r.status_code != 200:
+                        logging.error("Could not add datapoint to stream : [%s]" %  r.status_code)
+                    else:
+                        logging.info("successfully added datapoint")
+                    return
 
 if __name__ == "__main__":
     extractor = EnvironmentLoggerJSON2NetCDF()

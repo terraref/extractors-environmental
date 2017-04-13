@@ -201,7 +201,7 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-@push_to_geostream(sensor_name="Full Field - Environmental Logger")
+#@push_to_geostream(sensor_name="Full Field - Environmental Logger")
 def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None, secret_key=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
