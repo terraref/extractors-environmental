@@ -75,7 +75,7 @@ import argparse
 from datetime import date, datetime
 from netCDF4  import Dataset
 from environmental_logger_calculation import *
-from environmental_geostream import push_to_geostream
+# from environmental_geostream import push_to_geostream
 
 
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
