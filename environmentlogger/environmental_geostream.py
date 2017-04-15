@@ -1,36 +1,90 @@
-import requests
-import subprocess
 import json
-import sys
+import functools
+import numpy as np
+from pyclowder.geostreams import *
+from pyclowder.connectors import Connector
+from netCDF4  import Dataset
+from datetime import datetime, timedelta
 
-def _push_to_geostream(netCDF_handle, API_key):
+
+_HOST_URL = "https://terraref.ncsa.illinois.edu/clowder/"
+
+def _produce_attr_dict(netCDF_variable_obj):
     '''
-    Try to use ncks (a component of NCO) to get a json dump of netCDF file
-    and POST to the Geostream
-
-    *** Need support from bash/tcsh shell and NCO toolkits 4.6.2 and above (and their dependencies) ***
-    *** The JSON dump of ncks is developed by Professor Charlie Zender and Mr. Henry Butowsky ***
+    Produce a list of dictionary with attributes and value (Each dictionary is one datapoint)
     '''
-    host_get_template = "https://terraref.ncsa.illinois.edu/clowder/api/geostreams/datapoints?streamid=300&key={}".format(API_key)
-    host_post_template = ""
+    attributes = [attr for attr in dir(netCDF_variable_obj) if isinstance(attr, unicode)]
+    result     = {name:getattr(netCDF_variable_obj, name) for name in attributes}
 
-    try:
-        requests.get(host_get_template).raise_for_status()
-    except HTTPError as err:
-        print err
-        return -1
+    return [dict(result.items()+ {"value":str(data)}.items()) for data in netCDF_variable_obj[...]]
 
-    ### Generate the JSON file with ncks ###
-    # try:
-    raw_JSON = json.loads(subprocess.check_output(["ncks", "--json", netCDF_handle]))
-    # except CalledProcessError as err:
-    #     print err
-    #     return -1
+def push_to_geostream(sensor_name):
+    '''
+    Will push the data from output environmental logger file into the Clowder geostream
 
-    status = requests.post(host_get_template, json=json.dumps(raw_JSON)) # weird, but using json.dump to make sure that the data is correctly encoded
-    status.raise_for_status()
-    return 0
+    1st Level is the Environmental Logger itself
+    2nd Level is the sensors (weather station, sensor co2, etc.)
+    3rd Level is the data collected in each sensor at each time point
+    '''
+    def decorator(func):
+        @functools.wraps(func)
+        def _push_to_geostream(*args, **kwargs):
+            '''
+            Will do the real work: setup sensor, stream and datapoints
+            '''
+            file_path, API_key = func(*args, **kwargs)
 
-    
-if __name__ == '__main__':
-    _push_to_geostream(sys.argv[1], sys.argv[2])
+            if API_key is None:
+                print "This execution will not be pushed to the Clowder Geostream"
+            else:
+                if sensor_name == "Full Field - Environmental Logger":
+                    coordinate_set = [-111.974304, 33.075576, 0] #FIXME Is it [lat, long, sea_lvl]? How to represent an area
+                
+                custom_arguments = {"geom": {"type":       "Area",
+                                             "coordinates":coordinate_set},
+                                    "type":  {"id"        :"MAC Field Scanner",
+                                              "title"     :"MAC Field Scanner",
+                                              "sensorType": 4},
+                                    "region": "Maricopa"}
+
+                time_format = "%Y-%m-%dT%H:%M:%s-06:00" #FIXME What is -06:00?
+
+                with Dataset(file_path, "r") as netCDF_handle:
+                     puppet_connector = Connector(sensor_name)
+
+                     ### 1st Level (Plot) ###
+                     sensor_id = create_sensor(puppet_connector, 
+                                               _HOST_URL, API_key, 
+                                               sensor_name, 
+                                               **custom_arguments)
+
+                     stream_list = set([getattr(data, u'sensor') for data in netCDF_handle.variables.values() if u'sensor' in dir(data)])
+
+                     ### 2nd Level (Stream) "Sensors" in Environmental Logger ###
+                     for stream in stream_list:
+                         stream_id = create_stream(puppet_connector,
+                                                   _HOST_URL, 
+                                                   API_key, 
+                                                   str(stream), 
+                                                   sensor_id, 
+                                                   custom_arguments["geom"])
+
+                         for members in netCDF_handle.get_variables_by_attributes(sensor=stream):
+                            data_points = _produce_attr_dict(members)
+
+                            for index in range(len(data_points)):
+                                time_point = (datetime(year=1970, month=1, day=1) +\
+                                              timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
+
+                                ### 3rd Level (data_point) data collected in each time point ###
+                                ### FIXME Internal Server Error 500 Anything wrong?
+                                data_point_id = create_datapoint(puppet_connector, 
+                                                                 _HOST_URL, 
+                                                                 API_key, 
+                                                                 stream_id,
+                                                                 custom_arguments["geom"],
+                                                                 time_point, ### <-- starttime = endtime because collected in one moment
+                                                                 time_point, ### <-- starttime = endtime because collected in one moment
+                                                                 data_points[index]) ### <-- The attribute and values in each time point (data_point)
+        return _push_to_geostream
+    return decorator
