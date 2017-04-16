@@ -98,7 +98,7 @@ _CF_STANDARDS    = {u'precipitation' : "precipitation_flux",
                     u"windDirection" : "wind_from_direction",
                     u"sensor_co2"    : "mole_fraction_of_carbon_dioxide_in_air"}
 
-_NAMES = {'sensor par'   : 'Sensor Photosynthetically Active Radiation',
+_NAMES = {'sensor par'   : 'Photosynthetically Active Radiation',
           'sunDirection' : 'Solar zenith (or elevation) angle (under discussion right now)',
           'temperature'  : 'Atmosperic Temperature',
           'relHumidity'  : 'Relative Humidity',
@@ -124,6 +124,8 @@ def renameTheValue(name):
         name = _UNIT_DICTIONARY[name]
     elif name in _NAMES:
         name = _NAMES[name]
+    elif name in ("sensor co2" or "sensor par"):
+        name = "atmospherical CO2 concentration" if name.endswith("co2") else "photosynthetically active radiation"
 
     return name.replace(" ", "_")
 
@@ -219,10 +221,10 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         netCDFHandler.createDimension("time", None)
 
         ### Create "Sensor" Variables ###
-        sensor_par_var      = netCDFHandler.createVariable("sensor_par_object", 'i2')
-        sensor_co2_var      = netCDFHandler.createVariable("sensor_co2_object", "i2")
-        sensor_spectrum_var = netCDFHandler.createVariable("sensor_spectrum_object", "i2")
-        sensor_weather_var  = netCDFHandler.createVariable("sensor_weather_station_object", "i2")
+        sensor_par_var      = netCDFHandler.createVariable("sensor_par", 'i2')
+        sensor_co2_var      = netCDFHandler.createVariable("sensor_co2", "i2")
+        sensor_spectrum_var = netCDFHandler.createVariable("sensor_spectrum", "i2")
+        sensor_weather_var  = netCDFHandler.createVariable("sensor_weather_station", "i2")
 
         weather_station_attr = {"id"         :"5873a9724f0cad7d8131b4d3",
                                 "name"       :"Thies CLIMA",
