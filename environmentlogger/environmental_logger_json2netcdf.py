@@ -205,11 +205,11 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None):
+def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
     '''
-    with Dataset(outputFileName, 'w', format='NETCDF4') as netCDFHandler:
+    with Dataset(outputFileName, 'w', format=outputFileType) as netCDFHandler:
         loggerFixedInfos = JSONArray["environment_sensor_fixed_infos"]
         loggerReadings   = JSONArray["environment_sensor_readings"]
 
@@ -384,10 +384,11 @@ def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingS
         netCDFHandler.history = " ".join((time.strftime("%a %b %d %H:%M:%S %Y",  time.localtime(int(time.time()))), ': python', commandLine))
 
 
-def mainProgramTrigger(fileInputLocation, fileOutputLocation):
+def mainProgramTrigger(fileInputLocation, fileOutputLocation, fileType="NETCDF4"):
     '''
     This function will trigger the whole script
     '''
+    print fileType
     startPoint = time.clock()
     if not os.path.exists(fileOutputLocation) and not fileOutputLocation.endswith('.nc'):
         os.mkdir(fileOutputLocation)  # Create folder
@@ -396,11 +397,11 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
         print "\nProcessing", "".join((fileInputLocation, '....')),"\n", "-" * (len(fileInputLocation) + 15)
         tempJSONMasterList = JSONHandler(fileInputLocation)
         if not os.path.isdir(fileOutputLocation):
-            main(tempJSONMasterList, fileOutputLocation, commandLine=" ".join(sys.argv))
+            main(tempJSONMasterList, fileType, fileOutputLocation, commandLine=" ".join(sys.argv))
         else:
             outputFileName = os.path.split(fileInputLocation)[-1]
             print "Exported to", fileOutputLocation, "\n", "-" * (len(fileInputLocation) + 15)
-            main(tempJSONMasterList, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv))
+            main(tempJSONMasterList, fileType, os.path.join(fileOutputLocation,  "".join((outputFileName.strip('.json'), '.nc'))),commandLine=" ".join(sys.argv))
     else:    
         for filePath, fileDirectory, fileName in os.walk(fileInputLocation):
             for members in fileName:
@@ -409,7 +410,7 @@ def mainProgramTrigger(fileInputLocation, fileOutputLocation):
                     outputFileName = "".join((members.strip('.json'), '.nc'))
                     tempJSONMasterList = JSONHandler(os.path.join(filePath, members))
                     print "Exported to", str(os.path.join(fileOutputLocation, outputFileName)), "\n", "-" * (len(fileInputLocation) + 15)
-                    main(tempJSONMasterList, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv))
+                    main(tempJSONMasterList, fileType, os.path.join(fileOutputLocation, outputFileName), commandLine=" ".join(sys.argv))
     
     endPoint = time.clock()
     print "Done. Execution time: {:.3f} seconds\n".format(endPoint-startPoint)
@@ -419,9 +420,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('input_file_path', type=str, nargs=1,
                              help='The path to the raw environmental logger records (JSON format)')
+    parser.add_argument('netCDF_format', type=str, nargs='?', default="NETCDF4",
+                             help='The format of the output netCDF file (can be NETCDF3_64BIT_DATA or NETCDF4)')
     parser.add_argument('output_file_path', type=str, nargs=1, default=".",
                              help='The path to the environmental logger final outputs you want (netCDF format, Level 1 Data)')
-
     args = parser.parse_args()
 
-    mainProgramTrigger(args.input_file_path[0], args.output_file_path[0])
+    mainProgramTrigger(args.input_file_path[0], args.output_file_path[0], args.netCDF_format)
