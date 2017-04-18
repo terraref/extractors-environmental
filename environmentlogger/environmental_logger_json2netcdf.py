@@ -21,7 +21,7 @@ Input  filenames must have '.json' extension
 Output filenames are replace '.json' with '.nc'
 
 UCI test:
-python ${HOME}/terraref/extractors-environmental/environmentlogger/environmental_logger_json2netcdf.py ${DATA}/terraref/environmentlogger_test.json ${DATA}/terraref
+python ${HOME}/terraref/extractors-environmental/environmentlogger/environmental_logger_json2netcdf.py ${DATA}/terraref/2016-10-06_03-17-29_environmentlogger.json ${DATA}/terraref
 
 UCI production:
 python ${HOME}/terraref/extractors-environmental/environmentlogger/environmental_logger_json2netcdf.py ${DATA}/terraref/EnvironmentLogger/2016-04-07/2016-04-07_12-00-07_enviromentlogger.json ~/rgr
@@ -99,7 +99,10 @@ _CF_STANDARDS    = {u'precipitation' : "precipitation_flux",
                     u"windDirection" : "wind_from_direction",
                     u"sensor_co2"    : "mole_fraction_of_carbon_dioxide_in_air"}
 
-_NAMES = {'sensor par'   : 'Photosynthetically Active Radiation',
+_NAMES = {'airPressure'  : 'Atmospheric Air Pressure',
+          'brightness'   : 'Brightness',
+          'sensor par'   : 'Photosynthetically Active Radiation',
+          'sensor co2'   : 'Atmosperic CO2 Concentration',
           'sunDirection' : 'Solar zenith (or elevation) angle (under discussion right now)',
           'temperature'  : 'Atmosperic Temperature',
           'relHumidity'  : 'Relative Humidity',
@@ -126,7 +129,9 @@ def renameTheValue(name):
     elif name in _NAMES:
         name = _NAMES[name]
     elif name in ("sensor co2" or "sensor par"):
-        name = "atmospherical CO2 concentration" if name.endswith("co2") else "photosynthetically active radiation"
+        name = "atmosperic CO2 concentration" if name.endswith("co2") else "photosynthetically active radiation"
+    elif name.startswith("sensor"):
+        return "sensor"
 
     return name.replace(" ", "_")
 
@@ -229,7 +234,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
 
         weather_station_attr = {"id"         :"5873a9724f0cad7d8131b4d3",
                                 "name"       :"Thies CLIMA",
-                                "description":"This dataset contains documentation, datasheets, and metadata about the Theis CLIMA sensor.",
+                                "description":"Weather Station Produced by Theis CLIMA. Collects atmospheric data (e.g., brightness, precipitation, etc.).",
                                 "created"    :"Mon Jan 09 09:17:06 CST 2017",
                                 "thumbnail"  :"5873a97f4f0cad7d8131b56d",
                                 "authorId"   :"578f76948e7e1aecb7cad4c5",
@@ -237,7 +242,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
 
         spectro_attr = {"id"         :"5873a9174f0cad7d8131b09a",
                         "name"       :"Skye PRI",
-                        "description":"This dataset contains documentation, datasheets, and metadata about the Skye PRI sensor.",
+                        "description":"Spectrometer Produced by Skye PRI sensor. Measures the incident and reflected light",
                         "created"    :"Mon Jan 09 09:15:35 CST 2017",
                         "thumbnail"  :"None",
                         "authorId"   :"578f76948e7e1aecb7cad4c5",
@@ -245,7 +250,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
 
         sensor_co2_attr = {"id"         :"5873a9924f0cad7d8131b648",
                            "name"       :"Vaisala CO2",
-                           "description":"This dataset contains documentation, datasheets, and metadata about the Viasala CO2 sensor.",
+                           "description":"CO2 Probe Produce by Vaisala, Mark GMP343. Monitors the atmospheric CO2 concentration",
                            "created"    :"Mon Jan 09 09:17:38 CST 2017",
                            "thumbnail"  :"5873a99e4f0cad7d8131b6dc",
                            "authorId"   :"578f76948e7e1aecb7cad4c5",
@@ -253,7 +258,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
 
         sensor_par_attr = {"id"         :"5873a8ce4f0cad7d8131ad86",
                            "name"       :"Quantum PAR",
-                           "description":"This dataset contains documentation, datasheets, and metadata about the Quantum PAR sensor.",
+                           "description":"Quantum Sensor Produced by Apogee. Measures the Photosynthetically Active Radiation (aka PAR)",
                            "created"    :"Mon Jan 09 09:14:22 CST 2017",
                            "thumbnail"  :"None",
                            "authorId"   :"578f76948e7e1aecb7cad4c5",
@@ -281,7 +286,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
             rawValueVariable[:] = rawValue
             setattr(valueVariable, "units", unit[0])
 
-            setattr(valueVariable, "sensor_weather_station", 'refer to variable "sensor weather station"')
+            setattr(valueVariable, "sensor", 'sensor_weather_station')
             if data in _CF_STANDARDS:
                 setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
             if data in _NAMES:
@@ -294,32 +299,33 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
         netCDFHandler.createDimension("wvl_lgr", len(wvl_lgr))
         wavelengthVariable = netCDFHandler.createVariable("wvl_lgr", "f4", ("wvl_lgr",))
 
-        setattr(wavelengthVariable, "sensor_spectrum", 'refer to variable "sensor spectrum object"')
+        setattr(wavelengthVariable, "sensor", 'sensor_spectrum')
         spectrumVariable   = netCDFHandler.createVariable("spectrum", "f4", ("time", "wvl_lgr"))
-        setattr(spectrumVariable, "sensor_spectrum", 'refer to variable "sensor spectrum object"')
+        setattr(spectrumVariable, "sensor", 'sensor_spectrum')
         intensityVariable  = netCDFHandler.createVariable("maxFixedIntensity", "f4", ("time",))
-        setattr(intensityVariable, "sensor_spectrum", 'refer to variable "sensor spectrum object"')
+        setattr(intensityVariable, "sensor", 'sensor_spectrum')
 
 
         #TODO
         #TODO add stanard names into the environmental loggers
         wavelengthVariable[:] = wvl_lgr
         setattr(wavelengthVariable, "units", "meter")
-        setattr(wavelengthVariable, "long_name", "wavelengths")
+        setattr(wavelengthVariable, "long_name", "Wavelengths")
         setattr(wavelengthVariable, "standard_name", "radiation_wavelength")
         setattr(wavelengthVariable, "notes", "these wavelengths are all the same in different collections from the environmental logger. Ranging from 337.7 to 824 nm.")
         spectrumVariable[:,:] = spectrum
         setattr(spectrumVariable, "units", "meter")
-        setattr(spectrumVariable, "long_name", "spectrum from hyperspectral camera spectrometer")
+        setattr(spectrumVariable, "long_name", "Spectrum from Hyperspectral Camera Spectrometer")
         setattr(spectrumVariable, "notes", "1024*<time> number of discrete wavelengths collected by the spectrometer")
         intensityVariable[:]  = maxFixedIntensity
         setattr(intensityVariable, "units", "placeholder")
-        setattr(intensityVariable, "long_name", "max_fixed_intensity")
+        setattr(intensityVariable, "long_name", "Max Fixed Intensity")
         setattr(intensityVariable, "notes", "maximum_fix_intensity (always equals to 2^14-1=16383)")
 
         timeVariable = netCDFHandler.createVariable("time", 'f8', ('time',))
         timeVariable[:] = [translateTime(data["timestamp"]) for data in loggerReadings]
         setattr(timeVariable, "units",    "days since 1970-01-01 00:00:00")
+        setattr(timeVariable, "long_name", "Time")
         setattr(timeVariable, "calender", "gregorian")
 
         for data in loggerReadings[0]:
@@ -333,12 +339,17 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
                 if data.endswith("co2"):
-                    setattr(sensorValueVariable, "sensor_co2", 'refer to "sensor co2 object"')
+                    setattr(sensorValueVariable, "sensor", 'sensor_co2')
                 else:
-                    setattr(sensorValueVariable, "sensor_par", 'refer to "sensor par object"')
+                    setattr(sensorValueVariable, "sensor", 'sensor_par')
 
                 if renameTheValue(data) in _CF_STANDARDS:
                     setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
+                
+                if renameTheValue(data) == 'Photosynthetically_Active_Radiation':
+                    setattr(sensorValueVariable, "long_name", "Photosynthetically Active Radiation")
+                else:
+                    setattr(sensorValueVariable, "long_name", "Atmosperic CO2 Concentration")
 
         wvl_ntf  = [np.average([wvl_lgr[i], wvl_lgr[i+1]]) for i in range(len(wvl_lgr)-1)]
         delta    = [wvl_ntf[i+1] - wvl_ntf[i] for i in range(len(wvl_ntf) - 1)]
@@ -375,7 +386,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
         # #Integration Time
         netCDFHandler.createVariable("time_integration", 'f4')[...] = float(loggerReadings[0]["spectrometer"]["integration time in us"]) / 1.0e-6
         setattr(netCDFHandler.variables["time_integration"], "units", "second")
-        setattr(netCDFHandler.variables['time_integration'], 'long_name', 'Spectrometer integration time')
+        setattr(netCDFHandler.variables['time_integration'], 'long_name', 'Spectrometer Integration Time')
 
         # #Spectrometer area
         netCDFHandler.createVariable("area_sensor", "f4")[...] = AREA
