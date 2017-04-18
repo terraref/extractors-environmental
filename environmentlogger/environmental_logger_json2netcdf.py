@@ -75,7 +75,6 @@ import argparse
 from datetime import date, datetime
 from netCDF4  import Dataset
 from environmental_logger_calculation import *
-from environmental_geostream import push_to_geostream
 
 
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
@@ -201,7 +200,6 @@ def translateTime(timeString):
     return (timeSplit.total_seconds() + timeUnpack.tm_hour * 3600.0 + timeUnpack.tm_min * 60.0 + timeUnpack.tm_sec) / (3600.0 * 24.0)
 
 
-#@push_to_geostream(sensor_name="Full Field - Environmental Logger")
 def main(JSONArray, outputFileName, wavelength=None, spectrum=None, downwellingSpectralFlux=None, commandLine=None, secret_key=None):
     '''
     Main netCDF handler, write data to the netCDF file indicated.
