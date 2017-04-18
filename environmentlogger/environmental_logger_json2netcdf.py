@@ -76,6 +76,7 @@ from datetime import date, datetime
 from netCDF4 import Dataset
 from environmental_logger_calculation import *
 
+
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
                     u"hPa": {"original":"hectopascal", "SI":"pascal", "power":1e2},
                     u"DegCelsius": {"original":"celsius", "SI":"celsius", "power":1},
