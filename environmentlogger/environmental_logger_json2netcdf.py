@@ -338,9 +338,9 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
                 sensorRawValueVariable[:] = sensorRaw
                 setattr(sensorValueVariable, "units", sensorUnit[0])
                 if data.endswith("co2"):
-                    setattr(sensorValueVariable, "sensor", 'sensor co2')
+                    setattr(sensorValueVariable, "sensor", 'sensor_co2')
                 else:
-                    setattr(sensorValueVariable, "sensor", 'sensor par')
+                    setattr(sensorValueVariable, "sensor", 'sensor_par')
 
                 if renameTheValue(data) in _CF_STANDARDS:
                     setattr(sensorValueVariable, "standard_name", _CF_STANDARDS[renameTheValue(data)])
