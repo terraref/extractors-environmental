@@ -101,7 +101,7 @@ def _produce_attr_dict(netCDF_variable_obj):
 
     return [dict(result.items()+ {"value":str(data)}.items()) for data in netCDF_variable_obj[...]]
 
-def prepareDatapoint(self, connector, host, secret_key, resource, ncdf):
+def prepareDatapoint(connector, host, secret_key, resource, ncdf):
     coords = [-111.974304, 33.075576, 0]
 
     with Dataset(ncdf, "r") as netCDF_handle:
