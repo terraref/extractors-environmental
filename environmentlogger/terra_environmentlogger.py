@@ -86,7 +86,7 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                     raise Exception('no parent dataset ID found')
 
                 # Push to geostreams
-                self.prepareDatapoint(connector, host, secret_key, resource, out_netcdf)
+                prepareDatapoint(connector, host, secret_key, resource, out_netcdf)
 
 
         else:
