@@ -107,7 +107,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
     with Dataset(ncdf, "r") as netCDF_handle:
         sensor_id = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, "Full Field - Environmental Logger")
         if not sensor_id:
-            sensor_id = pyclowder.geostreams.create_sensor(host, secret_key, "Full Field - Environmental Logger", {
+            sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, "Full Field - Environmental Logger", {
                 "type": "Point",
                 "coordinates": coords
             })
@@ -116,9 +116,9 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
         for stream in stream_list:
             # STREAM is plot x instrument
             stream_name = "EnvLog %s - Full Field" % stream
-            stream_id = pyclowder.geostreams.get_stream_by_name(host, secret_key, stream_name)
+            stream_id = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
             if not stream_id:
-                stream_id = pyclowder.geostreams.create_stream(host, secret_key, sensor_id, stream_name, {
+                stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, sensor_id, stream_name, {
                     "type": "Point",
                     "coordinates": coords
                 })
