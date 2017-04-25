@@ -1,0 +1,17 @@
+{
+  "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
+  "name": "terra.env.irrigation",
+  "version": "1.0",
+  "description": "Irrigation csv file parser",
+  "contributors": [],
+  "contexts": [],
+  "repository": {"repType": "git", "repUrl": "https://github.com/terraref/extractors-environmental.git"},
+  "process": {
+    "file":[
+	"text/csv"
+	]
+  },
+  "external_services": [],
+  "dependencies": [],
+  "bibtex": []
+}
