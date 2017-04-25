@@ -10,7 +10,6 @@ def gallon2mm(value):
         return (int(value)*3.78541)/((20*200)*(24*60*60))
     return 0.0
 
-
 # Parse CSV file
 def parse_file(filepath, main_coords):
     results = []
@@ -29,10 +28,11 @@ def parse_file(filepath, main_coords):
         utc_offset = dateutil.tz.tzoffset("-07:00", -7 * 60 * 60)
         for row in reader:
 
-            date = datetime.datetime.strptime(row['Date Time'], '%m/%d/%Y %H:%M').isoformat() + utc_offset.tzname(None)
-
+            start_time = datetime.datetime.strptime(row['Date Time'], '%m/%d/%Y %H:%M').isoformat() + utc_offset.tzname(None)
+	    end_time = (datetime.datetime.strptime(row['Date Time'], '%m/%d/%Y %H:%M')+datetime.timedelta(0,0,0,0,59,23)).isoformat() + utc_offset.tzname(None)
             record = {
-                'start_time': date,
+                'start_time': start_time,
+		'end_time': end_time,
                 'properties' : {'irrigation_flux':gallon2mm(row['Gallons'])},
                 'type': 'Feature',
                 'geometry': GEOMETRY
