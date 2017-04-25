@@ -10,6 +10,7 @@ from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
 import pyclowder.files
 import pyclowder.datasets
+import pyclowder.geostreams
 
 from parser import *
 
@@ -51,7 +52,7 @@ class IrrigationFileParser(Extractor):
         stream_name = "Irrigation Observations"
         stream_id =pyclowder.geostreams.get_stream_by_name(connector,host, secret_key, stream_name)
         if not stream_id:
-            stream_id = pyclowder.geostreams.create_stream(host, secret_key, sensor_id, stream_name, {
+            stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
                 "type": "Point",
                 "coordinates": main_coords
             })
