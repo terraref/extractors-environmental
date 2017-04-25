@@ -11,15 +11,12 @@ def gallon2mm(value):
     return 0.0
 
 
-GEOMETRY = {
-    'type': 'Point',
-    'coordinates': [-111.974304, 33.075576, 0]
-}
-
-
 # Parse CSV file
-def parse_file(filepath):
+def parse_file(filepath, main_coords):
     results = []
+    GEOMETRY = {
+    'type': 'Point',
+    'coordinates': main_coords}
     with open(filepath) as csvfile:
         sitename = csvfile.readline().split(',')[1]
         header = []
