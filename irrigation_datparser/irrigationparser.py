@@ -56,7 +56,7 @@ class IrrigationFileParser(Extractor):
                 "coordinates": main_coords
             })
 
-        records = parse_file(inputfile)
+        records = parse_file(inputfile, main_coords)
         for record in records:
             record['source_file'] = fileId
             record['stream_id'] = str(stream_id)
