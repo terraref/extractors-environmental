@@ -14,6 +14,7 @@ import requests
 from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
 import pyclowder.files
+import pyclowder.datasets
 import pyclowder.geostreams
 
 from netCDF4  import Dataset
@@ -78,9 +79,17 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                         resource['parent']['id'] = r.json()[0]['id']
 
                 if 'parent' in resource and resource['parent']['id'] != '':
-                    logging.info("uploading netCDF file to Clowder")
-                    pyclowder.files.upload_to_dataset(connector, host, secret_key,
+                    ds_files = pyclowder.datasets.get_file_list(connector, host, secret_key, resource['parent']['id'])
+                    found_output_in_dataset = False
+                    for f in ds_files:
+                        if f['filename'] == out_netcdf:
+                            found_output_in_dataset = True
+                    if not found_output_in_dataset:
+                        logging.info("uploading netCDF file to Clowder")
+                        pyclowder.files.upload_to_dataset(connector, host, secret_key,
                                                       resource['parent']['id'], out_netcdf)
+                    else:
+                        logging.info("%s already in Clowder; not re-uploading" % out_netcdf)
                 else:
                     logging.error('no parent dataset ID found; unable to upload to Clowder')
                     raise Exception('no parent dataset ID found')
