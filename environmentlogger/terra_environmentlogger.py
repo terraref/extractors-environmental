@@ -114,25 +114,29 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
     coords = [-111.974304, 33.075576, 0]
 
     with Dataset(ncdf, "r") as netCDF_handle:
-        sensor_id = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, "Full Field - Environmental Logger")
-        if not sensor_id:
+        sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, "Full Field - Environmental Logger")
+        if not sensor_data:
             sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, "Full Field - Environmental Logger", {
                 "type": "Point",
                 "coordinates": coords
             })
+        else:
+            sensor_id = sensor_data['id']
 
         stream_list = set([getattr(data, u'sensor') for data in netCDF_handle.variables.values() if u'sensor' in dir(data)])
         for stream in stream_list:
             # STREAM is plot x instrument
             stream_name = "EnvLog %s - Full Field" % stream
             logging.debug("checking for stream %s" % stream_name)
-            stream_id = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
-            if not stream_id:
+            stream_data = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
+            if not stream_data:
                 logging.debug("...stream not found. creating")
                 stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
                     "type": "Point",
                     "coordinates": coords
                 })
+            else:
+                stream_id = stream_data['id']
 
             for members in netCDF_handle.get_variables_by_attributes(sensor=stream):
                 data_points = _produce_attr_dict(members)
