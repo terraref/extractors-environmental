@@ -118,7 +118,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
             stream_name = "EnvLog %s - Full Field" % stream
             stream_id = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
             if not stream_id:
-                stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, sensor_id, stream_name, {
+                stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
                     "type": "Point",
                     "coordinates": coords
                 })
