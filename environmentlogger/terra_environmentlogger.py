@@ -82,7 +82,7 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                     ds_files = pyclowder.datasets.get_file_list(connector, host, secret_key, resource['parent']['id'])
                     found_output_in_dataset = False
                     for f in ds_files:
-                        if f['filename'] == out_netcdf:
+                        if f['filename'] == resource['name'][:-5]+".nc":
                             found_output_in_dataset = True
                     if not found_output_in_dataset:
                         logging.info("uploading netCDF file to Clowder")
@@ -125,8 +125,10 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
         for stream in stream_list:
             # STREAM is plot x instrument
             stream_name = "EnvLog %s - Full Field" % stream
+            logging.debug("checking for stream %s" % stream_name)
             stream_id = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
             if not stream_id:
+                logging.debug("...stream not found. creating")
                 stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
                     "type": "Point",
                     "coordinates": coords
