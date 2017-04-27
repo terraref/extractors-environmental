@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 
-"""
-This extractor triggers when a JSON file is added to Clowder.
-
-It calls processing methods in environmental_logger_json2netcdf.py to
-convert the JSON file to .nc netCDF format.
-"""
-
 import os
 import logging
 import requests
+
+import datetime
+from dateutil.parser import parse
+from influxdb import InfluxDBClient, SeriesHelper
 
 from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
@@ -35,6 +32,16 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                                  help="root directory where timestamp & output directories will be created")
         self.parser.add_argument('--overwrite', dest="force_overwrite", type=bool, nargs='?', default=False,
                                  help="whether to overwrite output file if it already exists in output directory")
+        self.parser.add_argument('--influxHost', dest="influx_host", type=str, nargs='?',
+                                 default="terra-logging.ncsa.illinois.edu", help="InfluxDB URL for logging")
+        self.parser.add_argument('--influxPort', dest="influx_port", type=int, nargs='?',
+                                 default=8086, help="InfluxDB port")
+        self.parser.add_argument('--influxUser', dest="influx_user", type=str, nargs='?',
+                                 default="terra", help="InfluxDB username")
+        self.parser.add_argument('--influxPass', dest="influx_pass", type=str, nargs='?',
+                                 default="", help="InfluxDB password")
+        self.parser.add_argument('--influxDB', dest="influx_db", type=str, nargs='?',
+                                 default="extractor_db", help="InfluxDB databast")
 
         # parse command line and load default logging configuration
         self.setup()
@@ -46,6 +53,11 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         # assign other arguments
         self.output_dir = self.args.output_dir
         self.force_overwrite = self.args.force_overwrite
+        self.influx_host = self.args.influx_host
+        self.influx_port = self.args.influx_port
+        self.influx_user = self.args.influx_user
+        self.influx_pass = self.args.influx_pass
+        self.influx_db = self.args.influx_db
 
     def check_message(self, connector, host, secret_key, resource, parameters):
         # Only trigger extraction if the newly added file is a relevant JSON file
@@ -55,6 +67,10 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         return CheckMessage.download
 
     def process_message(self, connector, host, secret_key, resource, parameters):
+        starttime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        created_count = 0
+        bytes = 0
+
         # path to input JSON file
         in_envlog = resource['local_paths'][0]
 
@@ -69,6 +85,9 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
             if not os.path.isfile(out_netcdf) or self.force_overwrite:
                 logging.info("converting JSON to: %s" % out_netcdf)
                 ela.mainProgramTrigger(in_envlog, out_netcdf)
+
+                created_count += 1
+                bytes += os.path.getsize(out_netcdf)
 
                 # Fetch dataset ID by dataset name if not provided
                 if resource['parent']['id'] == '':
@@ -99,6 +118,31 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
 
             else:
                 logging.info("%s already exists; skipping" % out_netcdf)
+
+        endtime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        self.logToInfluxDB(starttime, endtime, created_count, bytes)
+
+    def logToInfluxDB(self, starttime, endtime, filecount, bytecount):
+        # Time of the format "2017-02-10T16:09:57+00:00"
+        f_completed_ts = int(parse(endtime).strftime('%s'))
+        f_duration = f_completed_ts - int(parse(starttime).strftime('%s'))
+
+        client = InfluxDBClient(self.influx_host, self.influx_port, self.influx_user, self.influx_pass, self.influx_db)
+        client.write_points([{
+            "measurement": "file_processed",
+            "time": f_completed_ts,
+            "fields": {"value": f_duration}
+        }], tags={"extractor": self.extractor_info['name'], "type": "duration"})
+        client.write_points([{
+            "measurement": "file_processed",
+            "time": f_completed_ts,
+            "fields": {"value": int(filecount)}
+        }], tags={"extractor": self.extractor_info['name'], "type": "filecount"})
+        client.write_points([{
+            "measurement": "file_processed",
+            "time": f_completed_ts,
+            "fields": {"value": int(bytecount)}
+        }], tags={"extractor": self.extractor_info['name'], "type": "bytes"})
 
 def _produce_attr_dict(netCDF_variable_obj):
     '''
@@ -153,6 +197,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                         }, time_point, time_point, data_points[index])
             except:
                 logging.error("NetCDF attribute not found: %s" % stream)
+
 
 if __name__ == "__main__":
     extractor = EnvironmentLoggerJSON2NetCDF()

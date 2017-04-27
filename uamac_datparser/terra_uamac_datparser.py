@@ -1,22 +1,14 @@
 #!/usr/bin/env python
 
-"""
-terra_uamac_datparser.py
-
-This extractor will trigger when a file is added to a dataset in Clowder.
-It checks if all the required input files are present in the dataset and no metadata
-indicating the dataset has already been processed.
-If the check is OK, it aggregates all input files into one JSON and inserts it into
-GeoStream.
-"""
-
 import os
-import csv
 import json
 import requests
-import urllib
 import urlparse
 import logging
+
+import datetime
+from dateutil.parser import parse
+from influxdb import InfluxDBClient, SeriesHelper
 
 from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
@@ -39,6 +31,16 @@ class MetDATFileParser(Extractor):
 		self.parser.add_argument('--aggregation', dest="agg_cutoff", type=int, nargs='?',
 								 default=(300),
 								 help="minute chunks to aggregate records into (default is 5 mins)")
+		self.parser.add_argument('--influxHost', dest="influx_host", type=str, nargs='?',
+								 default="terra-logging.ncsa.illinois.edu", help="InfluxDB URL for logging")
+		self.parser.add_argument('--influxPort', dest="influx_port", type=int, nargs='?',
+								 default=8086, help="InfluxDB port")
+		self.parser.add_argument('--influxUser', dest="influx_user", type=str, nargs='?',
+								 default="terra", help="InfluxDB username")
+		self.parser.add_argument('--influxPass', dest="influx_pass", type=str, nargs='?',
+								 default="", help="InfluxDB password")
+		self.parser.add_argument('--influxDB', dest="influx_db", type=str, nargs='?',
+								 default="extractor_db", help="InfluxDB databast")
 
 
 		# parse command line and load default logging configuration
@@ -51,6 +53,11 @@ class MetDATFileParser(Extractor):
 		# assign other arguments
 		self.sensor_name = self.args.sensor_name
 		self.agg_cutoff = self.args.agg_cutoff
+		self.influx_host = self.args.influx_host
+		self.influx_port = self.args.influx_port
+		self.influx_user = self.args.influx_user
+		self.influx_pass = self.args.influx_pass
+		self.influx_db = self.args.influx_db
 
 	def check_message(self, connector, host, secret_key, resource, parameters):
 		# Check for expected input files before beginning processing
@@ -68,26 +75,38 @@ class MetDATFileParser(Extractor):
 			return CheckMessage.ignore
 
 	def process_message(self, connector, host, secret_key, resource, parameters):
+		starttime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+		created_count = 0
+		bytes = 0
+
 		ISO_8601_UTC_OFFSET = dateutil.tz.tzoffset("-07:00", -7 * 60 * 60)
 		main_coords = [ -111.974304, 33.075576, 0]
 
 		# SENSOR is Full Field by default
-		sensor_id = get_sensor_id(host, secret_key, self.sensor_name)
-		if not sensor_id:
-			sensor_id = create_sensor(host, secret_key, self.sensor_name, {
+		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, self.sensor_name)
+		if not sensor_data:
+			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, {
 				"type": "Point",
 				# These are a point off to the right of the field
 				"coordinates": main_coords
-			})
+			}, {
+				"id": "MAC Field Scanner",
+				"title": "MAC Field Scanner",
+				"sensorType": 4
+			}, "Maricopa")
+		else:
+			sensor_id = sensor_data['id']
 
 		# STREAM is Weather Station
 		stream_name = self.sensor_name + " - Weather Observations"
-		stream_id = get_stream_id(host, secret_key, stream_name)
-		if not stream_id:
-			stream_id = create_stream(host, secret_key, sensor_id, stream_name, {
+		stream_data = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
+		if not stream_data:
+			stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
 				"type": "Point",
 				"coordinates": main_coords
 			})
+		else:
+			stream_id = stream_data['id']
 
 		# Find input files in dataset
 		target_files = get_all_files(resource)
@@ -129,10 +148,10 @@ class MetDATFileParser(Extractor):
 			for record in aggregationRecords:
 				record['properties']['source'] = datasetUrl
 				record['properties']['source_file'] = fileId
-
 				record['stream_id'] = str(stream_id)
+				pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
+													  record['start_time'], record['end_time'], record['properties'])
 
-			upload_datapoints(host, secret_key, aggregationRecords)
 			lastAggregatedFile = file
 
 		# Mark dataset as processed.
@@ -140,7 +159,9 @@ class MetDATFileParser(Extractor):
 			# TODO: Generate JSON-LD context for additional fields
 			"@context": ["https://clowder.ncsa.illinois.edu/contexts/metadata.jsonld"],
 			"dataset_id": resource['id'],
-			"content": {"status": "COMPLETED"},
+			"content": {
+				"datapoints_created": len(aggregationRecords)
+			},
 			"agent": {
 				"@type": "extractor",
 				"extractor_id": host + "/api/extractors/" + self.extractor_info['name']
@@ -148,108 +169,30 @@ class MetDATFileParser(Extractor):
 		}
 		pyclowder.datasets.upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
-# Get sensor ID from Clowder based on plot name
-def get_sensor_id(host, key, name):
-	if(not host.endswith("/")):
-		host = host+"/"
+		endtime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+		self.logToInfluxDB(starttime, endtime, created_count, bytes)
 
-	url = "%sapi/geostreams/sensors?sensor_name=%s&key=%s" % (host, name, key)
-	logging.debug("...searching for sensor : "+name)
-	r = requests.get(url)
-	if r.status_code == 200:
-		json_data = r.json()
-		for s in json_data:
-			if 'name' in s and s['name'] == name:
-				return s['id']
-	else:
-		print("error searching for sensor ID")
+	def logToInfluxDB(self, starttime, endtime, filecount, bytecount):
+		# Time of the format "2017-02-10T16:09:57+00:00"
+		f_completed_ts = int(parse(endtime).strftime('%s'))
+		f_duration = f_completed_ts - int(parse(starttime).strftime('%s'))
 
-	return None
-
-def create_sensor(host, key, name, geom):
-	if(not host.endswith("/")):
-		host = host+"/"
-
-	body = {
-		"name": name,
-		"type": "point",
-		"geometry": geom,
-		"properties": {
-			"popupContent": name,
-			"type": {
-				"id": "MAC Field Scanner",
-				"title": "MAC Field Scanner",
-				"sensorType": 4
-			},
-			"name": name,
-			"region": "Maricopa"
-		}
-	}
-
-	url = "%sapi/geostreams/sensors?key=%s" % (host, key)
-	logging.info("...creating new sensor: "+name)
-	r = requests.post(url,
-					  data=json.dumps(body),
-					  headers={'Content-type': 'application/json'})
-	if r.status_code == 200:
-		return r.json()['id']
-	else:
-		logging.error("error creating sensor")
-
-	return None
-
-# Get stream ID from Clowder based on stream name
-def get_stream_id(host, key, name):
-	if(not host.endswith("/")):
-		host = host+"/"
-
-	url = urlparse.urljoin(host, 'api/geostreams/streams?stream_name=%s&key=%s' % (name, key))
-	logging.debug("...searching for stream : "+name)
-	r = requests.get(url)
-	if r.status_code == 200:
-		json_data = r.json()
-		for s in json_data:
-			if 'name' in s and s['name'] == name:
-				return s['id']
-	else:
-		logging.error("error searching for stream ID")
-
-	return None
-
-def create_stream(host, key, sensor_id, name, geom):
-	if(not host.endswith("/")):
-		host = host+"/"
-
-	body = {
-		"name": name,
-		"type": "Feature",
-		"geometry": geom,
-		"properties": {},
-		"sensor_id": str(sensor_id)
-	}
-
-	url = "%sapi/geostreams/streams?key=%s" % (host, key)
-	logging.info("...creating new stream: "+name)
-	r = requests.post(url,
-					  data=json.dumps(body),
-					  headers={'Content-type': 'application/json'})
-	if r.status_code == 200:
-		return r.json()['id']
-	else:
-		logging.error("error creating stream: %s" % r.status_code)
-
-	return None
-
-# Save records as JSON back to GeoStream.
-def upload_datapoints(host, key, records):
-	url = urlparse.urljoin(host, 'api/geostreams/datapoints?key=%s' % key)
-
-	for record in records:
-		headers = {'Content-type': 'application/json'}
-		r = requests.post(url, data=json.dumps(record), headers=headers)
-		if (r.status_code != 200):
-			logging.error('Problem creating datapoint : [%s] - %s' % (str(r.status_code), r.text))
-	return
+		client = InfluxDBClient(self.influx_host, self.influx_port, self.influx_user, self.influx_pass, self.influx_db)
+		client.write_points([{
+			"measurement": "file_processed",
+			"time": f_completed_ts,
+			"fields": {"value": f_duration}
+		}], tags={"extractor": self.extractor_info['name'], "type": "duration"})
+		client.write_points([{
+			"measurement": "file_processed",
+			"time": f_completed_ts,
+			"fields": {"value": int(filecount)}
+		}], tags={"extractor": self.extractor_info['name'], "type": "filecount"})
+		client.write_points([{
+			"measurement": "file_processed",
+			"time": f_completed_ts,
+			"fields": {"value": int(bytecount)}
+		}], tags={"extractor": self.extractor_info['name'], "type": "bytes"})
 
 # Find as many expected files as possible and return the set.
 def get_all_files(resource):
@@ -269,6 +212,7 @@ def get_all_files(resource):
 
 def get_output_filename(raw_filename):
 	return '%s.nc' % raw_filename[:-len('_raw')]
+
 
 if __name__ == "__main__":
 	extractor = MetDATFileParser()
