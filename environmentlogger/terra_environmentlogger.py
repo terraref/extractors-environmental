@@ -97,8 +97,7 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
                 # Push to geostreams
                 prepareDatapoint(connector, host, secret_key, resource, out_netcdf)
 
-
-        else:
+            else:
                 logging.info("%s already exists; skipping" % out_netcdf)
 
 def _produce_attr_dict(netCDF_variable_obj):
