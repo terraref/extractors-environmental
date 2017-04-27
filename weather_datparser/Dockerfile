@@ -28,5 +28,5 @@ CMD ["extractor"]
 # executed by entrypoint.sh
 ENV RABBITMQ_EXCHANGE="terra" \
     RABBITMQ_VHOST="%2F" \
-    RABBITMQ_QUEUE="terra.environmental.uamac-datparser" \
-    MAIN_SCRIPT="terra_uamac_datparser.py"
+    RABBITMQ_QUEUE="terra.environmental.weather_datparser" \
+    MAIN_SCRIPT="terra_weather_datparser.py"

@@ -90,8 +90,8 @@ class MetDATFileParser(Extractor):
 				# These are a point off to the right of the field
 				"coordinates": main_coords
 			}, {
-				"id": "MAC Field Scanner",
-				"title": "MAC Field Scanner",
+				"id": "MAC Met Station",
+				"title": "MAC Met Station",
 				"sensorType": 4
 			}, "Maricopa")
 		else:

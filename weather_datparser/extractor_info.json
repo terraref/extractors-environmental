@@ -1,8 +1,8 @@
 {
   "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
-  "name": "terra.environmental.uamac-datparser",
+  "name": "terra.environmental.weather_datparser",
   "version": "2.0",
-  "description": "MAC Met Station DAT file parser",
+  "description": "MAC Met Station Weather DAT file parser",
   "author": "Xingchen Hong <hong114@illinois.edu>",
   "contributors": [],
   "contexts": [],

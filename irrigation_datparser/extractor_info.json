@@ -1,9 +1,10 @@
 {
   "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
-  "name": "terra.env.irrigation",
+  "name": "terra.environmental.irrigation_datparser",
   "version": "1.0",
-  "description": "Irrigation csv file parser",
-  "contributors": [],
+  "description": "Met Station Irrigation CSV file parser",
+  "author": "Max Burnette <mburnet2@illinois.edu>",
+  "contributors": ["Harsh Agrawal", "Xingchen Hong"],
   "contexts": [],
   "repository": {"repType": "git", "repUrl": "https://github.com/terraref/extractors-environmental.git"},
   "process": {

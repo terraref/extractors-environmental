@@ -1,0 +1,13 @@
+[Unit]
+Description=MAC Met Station Weather DAT file parser
+After=network.target
+
+[Service]
+User=extractor
+Group=users
+Restart=on-failure
+WorkingDirectory=/home/extractor/extractors-environmental/weather_datparser
+ExecStart=/usr/bin/python /home/extractor/extractors-environmental/weather_datparser/terra_weather_datparser.py
+
+[Install]
+WantedBy=multi-user.target
