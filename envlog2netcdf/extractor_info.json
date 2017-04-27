@@ -1,6 +1,6 @@
 {
     "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
-    "name": "terra.environmentlogger",
+    "name": "terra.environmental.envlog2netcdf",
     "version": "2.0",
     "description": "EnvironmentLogger to NetCDF extractor",
     "author": "Max Burnette <mburnet2@illinois.edu>",

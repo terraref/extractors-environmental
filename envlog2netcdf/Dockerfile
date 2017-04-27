@@ -30,5 +30,5 @@ CMD ["extractor"]
 # executed by entrypoint.sh
 ENV RABBITMQ_EXCHANGE="terra" \
     RABBITMQ_VHOST="%2F" \
-    RABBITMQ_QUEUE="terra.environmentlogger" \
-    MAIN_SCRIPT="terra_environmentlogger.py"
+    RABBITMQ_QUEUE="terra.environmental.envlog2netcdf" \
+    MAIN_SCRIPT="terra_envlog2netcdf.py"
