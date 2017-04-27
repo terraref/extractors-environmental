@@ -16,8 +16,12 @@ def parse_file(filepath, main_coords):
 
     with open(filepath) as csvfile:
         header = []
-        while len(header) < 5:
-            header.append(csvfile.readline())
+        found_date = False
+        while (not found_date) or len(header)<5:
+            curr_line = csvfile.readline()
+            header.append(curr_line)
+            if curr_line.find("Date Time") > -1:
+                found_date = True
         fields = header[-1].split(',')
 
         reader = csv.DictReader(csvfile, fieldnames=fields)
