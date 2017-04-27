@@ -1,0 +1,13 @@
+[Unit]
+Description=Meteorological DAT file parser
+After=network.target
+
+[Service]
+User=extractor
+Group=users
+Restart=on-failure
+WorkingDirectory=/home/extractor/extractors-meterological/datparser
+ExecStart=/usr/bin/python /home/extractor/extractors-meterological/datparser/terra_met_datparser.py
+
+[Install]
+WantedBy=multi-user.target

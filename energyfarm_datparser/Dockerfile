@@ -1,15 +1,13 @@
+# Dockerfile for the TerraRef meteorological dat parser extractor
 FROM ubuntu
 MAINTAINER Max Burnette <mburnet2@illinois.edu>
 
 # Install any programs needed
 RUN useradd -u 47852 extractor \
     && apt-get -y update \
-    && apt-get install -y -q build-essential git python python-dev python-pip python-gdal libnetcdf-dev \
-                             libpng-dev libjpeg8-dev libfreetype6-dev \
-                             libblas-dev liblapack-dev libatlas-base-dev gfortran \
-    #&& usr/bin/yes | apt-get build-dep python-matplotlib \
+    && apt-get install -y -q build-essential git python python-dev python-pip \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install pika requests numpy urllib3 netcdf enum pyyaml \
+    && pip install requests pika enum pyyaml urllib3 python-dateutil \
     && mkdir /home/extractor \
     && chown -R extractor /home/extractor \
     && cd /home/extractor \
@@ -30,5 +28,5 @@ CMD ["extractor"]
 # executed by entrypoint.sh
 ENV RABBITMQ_EXCHANGE="terra" \
     RABBITMQ_VHOST="%2F" \
-    RABBITMQ_QUEUE="terra.environmentlogger" \
-    MAIN_SCRIPT="terra_environmentlogger.py"
+    RABBITMQ_QUEUE="terra.environmental.energyfarm_datparser" \
+    MAIN_SCRIPT="terra_energyfarm_datparser.py"
