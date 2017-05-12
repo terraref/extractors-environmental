@@ -123,7 +123,7 @@ class MetDATFileParser(Extractor):
 			if 'content' in md and 'last processed time' in md['content']:
 				last_processed_time = md['content']['last processed time']
 				datapoint_count = md['content']['datapoints_created']
-				delete_metadata(connector, host, secret_key, resource['id'], self.extractor_info['name'])
+				delete_metadata(connector, host, secret_key, resource['id'], md['agent']['name'].split("/")[-1])
 			else:
 				last_processed_time = 0
 
