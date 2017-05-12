@@ -118,14 +118,16 @@ class MetDATFileParser(Extractor):
 		
 		# Get metadata to check till what time the file was processed last. Start processing the file after this time
 		allmd = pyclowder.files.download_metadata(connector, host, secret_key, resource['id'])
+		last_processed_time = 0
 		datapoint_count = 0
 		for md in allmd:
 			if 'content' in md and 'last processed time' in md['content']:
 				last_processed_time = md['content']['last processed time']
-				datapoint_count = md['content']['datapoints_created']
+				if 'datapoints_created' in md['content']:
+					datapoint_count = md['content']['datapoints_created']
+				else:
+					datapoint_count = 0
 				delete_metadata(connector, host, secret_key, resource['id'], md['agent']['name'].split("/")[-1])
-			else:
-				last_processed_time = 0
 
 		# Parse file and get all the records in it.
 		records = parse_file(inputfile, last_processed_time, utc_offset=ISO_8601_UTC_OFFSET)
