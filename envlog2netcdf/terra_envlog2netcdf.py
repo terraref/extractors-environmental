@@ -163,7 +163,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                     data_points = _produce_attr_dict(members)
 
                     for index in range(len(data_points)):
-                        time_format = "%Y-%m-%dT%H:%M:%s-07:00"
+                        time_format = "%Y-%m-%dT%H:%M:%S-07:00"
                         time_point = (datetime.datetime(year=1970, month=1, day=1) + \
                                       datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
 
