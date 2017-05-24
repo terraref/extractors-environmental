@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import os
 
 from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
