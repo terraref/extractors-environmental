@@ -166,7 +166,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
         else:
             sensor_id = sensor_data['id']
 
-        stream_list = set([getattr(data, u'sensor') for data in netCDF_handle.variables.values() if u'sensor' in dir(data)])
+        stream_list = set([sensor_info.name for sensor_info in file_handler.variables.values() if sensor_info.name.startswith('sensor')])
         for stream in stream_list:
             # STREAM is plot x instrument
             stream_name = "EnvLog %s - Full Field" % stream
@@ -182,7 +182,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                 stream_id = stream_data['id']
 
             try:
-                memberlist = netCDF_handle.get_variables_by_attributes(sensor=stream)
+                memberlist = netCDF_handle.get_variables_by_attributes(sensor=lambda x: x is not None)
                 for members in memberlist:
                     data_points = _produce_attr_dict(members)
 
