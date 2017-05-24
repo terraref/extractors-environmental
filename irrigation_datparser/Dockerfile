@@ -1,19 +1,10 @@
-# Dockerfile for the TerraRef irrigation dat parser extractor
-FROM ubuntu
+FROM terraref/terrautils
 MAINTAINER Max Burnette <mburnet2@illinois.edu>
 
 # Install any programs needed
-RUN useradd -u 47852 extractor \
-    && apt-get -y update \
-    && apt-get install -y -q build-essential git python python-dev python-pip \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install requests pika enum pyyaml urllib3 python-dateutil \
-    && mkdir /home/extractor \
-    && chown -R extractor /home/extractor \
-    && cd /home/extractor \
-    && git clone https://opensource.ncsa.illinois.edu/bitbucket/scm/cats/pyclowder2.git \
-    && cd pyclowder2 \
-    && python setup.py install
+RUN useradd -u 49044 extractor \
+    && mkdir -p /home/extractor/sites/ua-mac/raw_data \
+    && chown -R extractor /home/extractor
 
 # command to run when starting docker
 COPY entrypoint.sh extractor_info.json *.py /home/extractor/

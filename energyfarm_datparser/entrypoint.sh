@@ -15,7 +15,7 @@ fi
 
 # start server if asked
 if [ "$1" = 'extractor' ]; then
-    cd /home/clowder
+    cd /home/extractor
 
     if [ "$RABBITMQ_PORT_5672_TCP_ADDR" != "" ]; then
         # start extractor after rabbitmq is up
