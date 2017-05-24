@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+import os
 import requests
 
 from pyclowder.extractors import Extractor
