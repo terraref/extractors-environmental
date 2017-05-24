@@ -167,10 +167,8 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                         time_point = (datetime.datetime(year=1970, month=1, day=1) + \
                                       datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
 
-                        pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, {
-                            "type": "Point",
-                            "coordinates": coords
-                        }, time_point, time_point, data_points[index])
+                        pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, geom,
+                                                              time_point, time_point, data_points[index])
             except:
                 logging.error("NetCDF attribute not found: %s" % stream)
 
