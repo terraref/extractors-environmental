@@ -120,7 +120,8 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
             logging.info("%s already exists; skipping" % out_netcdf)
 
         endtime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-        terrautils.extractors.log_to_influxdb(self.extractor_info['name'], starttime, endtime, created_count, bytes)
+        terrautils.extractors.log_to_influxdb(self.extractor_info['name'], self.influx_params,
+                                              starttime, endtime, created_count, bytes)
 
 def _produce_attr_dict(netCDF_variable_obj):
     '''

@@ -148,7 +148,8 @@ class MetDATFileParser(Extractor):
 		pyclowder.files.upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
 		endtime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-		terrautils.extractors.log_to_influxdb(self.extractor_info['name'], starttime, endtime, created, bytes)
+		terrautils.extractors.log_to_influxdb(self.extractor_info['name'], self.influx_params,
+											  starttime, endtime, created, bytes)
 
 def delete_metadata(connector, host, key, fileid, extractor=None):
     """Delete file JSON-LD metadata from Clowder.
