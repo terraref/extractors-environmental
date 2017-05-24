@@ -42,7 +42,6 @@ class MetDATFileParser(Extractor):
 		self.parser.add_argument('--influxDB', dest="influx_db", type=str, nargs='?',
 								 default=influx_db, help="InfluxDB database")
 
-
 		# parse command line and load default logging configuration
 		self.setup()
 
