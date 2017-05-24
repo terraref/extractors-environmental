@@ -83,17 +83,16 @@ class MetDATFileParser(Extractor):
 		created = 0
 		bytes = 0
 
-		ISO_8601_UTC_OFFSET = dateutil.tz.tzoffset("-07:00", -7 * 60 * 60)
-		main_coords = [ -111.974304, 33.075576, 0]
+		# TODO: Get this from Clowder fixed metadata
+		geom = {
+			"type": "Point",
+			"coordinates": [-111.974304, 33.075576, 0]
+		}
 
-		# SENSOR is Full Field by default
+		# Get sensor or create if not found
 		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, self.sensor_name)
 		if not sensor_data:
-			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, {
-				"type": "Point",
-				# These are a point off to the right of the field
-				"coordinates": main_coords
-			}, {
+			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, geom, {
 				"id": "MAC Met Station",
 				"title": "MAC Met Station",
 				"sensorType": 4
@@ -101,40 +100,33 @@ class MetDATFileParser(Extractor):
 		else:
 			sensor_id = sensor_data['id']
 
-		# STREAM is Weather Station
+		# Get stream or create if not found
 		stream_name = self.sensor_name + " - Weather Observations"
 		stream_data = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
 		if not stream_data:
-			stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
-				"type": "Point",
-				"coordinates": main_coords
-			})
+			stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
 		else:
 			stream_id = stream_data['id']
 
-		# Find input files in dataset
-		target_files = get_all_files(resource)
-		datasetUrl = urlparse.urljoin(host, 'datasets/%s' % resource['id'])
 
+		# Process each file and concatenate results together.
+		datasetUrl = urlparse.urljoin(host, 'datasets/%s' % resource['id'])
+		ISO_8601_UTC_OFFSET = dateutil.tz.tzoffset("-07:00", -7 * 60 * 60)
 		#! Files should be sorted for the aggregation to work.
 		aggregationState = None
 		lastAggregatedFile = None
-
-		# Process each file and concatenate results together.
+		target_files = get_all_files(resource)
 		# To work with the aggregation process, add an extra NULL file to indicate we are done with all the files.
 		for file in (list(target_files) + [ None ]):
 			if file == None:
-				# We are done with all the files, finish up aggregation.
-				# Pass None as data into the aggregation to let it wrap up any work left.
+				# We are done with all the files, pass None to let aggregation wrap up any work left.
 				records = None
-				# The file ID would be the last file processed.
 				fileId = lastAggregatedFile['id']
 			else:
 				# Add this file to the aggregation.
 				for p in resource['local_paths']:
 					if os.path.basename(p) == file['filename']:
 						filepath = p
-
 				# Parse one file and get all the records in it.
 				records = parse_file(filepath, utc_offset=ISO_8601_UTC_OFFSET)
 				fileId = file['id']
@@ -158,7 +150,7 @@ class MetDATFileParser(Extractor):
 
 			lastAggregatedFile = file
 
-		# Mark dataset as processed.
+		# Mark dataset as processed
 		metadata = terrautils.extractors.build_metadata(host, self.extractor_info['name'], resource['id'], {
 			"datapoints_created": len(aggregationRecords)}, 'dataset')
 		pyclowder.datasets.upload_metadata(connector, host, secret_key, resource['id'], metadata)
@@ -181,10 +173,6 @@ def get_all_files(resource):
 				})
 
 	return target_files
-
-def get_output_filename(raw_filename):
-	return '%s.nc' % raw_filename[:-len('_raw')]
-
 
 if __name__ == "__main__":
 	extractor = MetDATFileParser()

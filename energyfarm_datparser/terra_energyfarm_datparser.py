@@ -25,6 +25,9 @@ class MetDATFileParser(Extractor):
 		influx_pass = os.getenv("INFLUXDB_PASSWORD", "")
 
 		# add any additional arguments to parser
+		self.parser.add_argument('--sensor', dest="sensor_name", type=str, nargs='?',
+								 default=('UIUC Energy Farm'),
+								 help="sensor name where streams and datapoints should be posted")
 		self.parser.add_argument('--influxHost', dest="influx_host", type=str, nargs='?',
 								 default=influx_host, help="InfluxDB URL for logging")
 		self.parser.add_argument('--influxPort', dest="influx_port", type=int, nargs='?',
@@ -44,6 +47,7 @@ class MetDATFileParser(Extractor):
 		logging.getLogger('__main__').setLevel(logging.DEBUG)
 
 		# assign other arguments
+		self.sensor_name = self.args.sensor_name
 		self.influx_params = {
 			"host": self.args.influx_host,
 			"port": self.args.influx_port,
@@ -72,38 +76,29 @@ class MetDATFileParser(Extractor):
 		created = 0
 		bytes = 0
 
-		ISO_8601_UTC_OFFSET = dateutil.tz.tzoffset("-07:00", -7 * 60 * 60)
-	
-		# Get input files
-		logger = logging.getLogger(__name__)
-		inputfile = resource["local_paths"][0]
-		fileId = resource['id']
-		filename = resource['name']
-
-		sensor_name = 'UIUC Energy Farm - '
-		stream_name = 'Energy Farm Observations '
-
 		# TODO: Replace these with calls to Clowder fixed metadata
-		if 'CEN' in filename:
-			sensor_name+= 'CEN'
-			stream_name+= 'CEN'
+		stream_name = 'Energy Farm Observations'
+		if 'CEN' in resource['name']:
+			self.sensor_name+= ' - CEN'
+			stream_name+= ' CEN'
 			main_coords = [-88.199801,40.062051,0]
-		elif 'NE' in filename:
-			sensor_name+= 'NE'
-			stream_name+= 'NE'
+		elif 'NE' in resource['name']:
+			self.sensor_name+= ' - NE'
+			stream_name+= ' NE'
 			main_coords = [-88.193298,40.067379,0]
-		elif 'SE' in filename:
-			sensor_name+= 'SE'
-			stream_name+= 'SE'
+		elif 'SE' in resource['name']:
+			self.sensor_name+= ' - SE'
+			stream_name+= ' SE'
 			main_coords = [-88.193573,40.056910,0]
+		geom = {
+			"type": "Point",
+			"coordinates": main_coords
+		}
 
-		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, sensor_name)
+		# Get sensor or create if not found
+		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, self.sensor_name)
 		if not sensor_data:
-			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, sensor_name, {
-					"type": "Point",
-					# These are a point off to the right of the field
-					"coordinates": main_coords
-				}, {
+			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, geom, {
 					"id": "Met Station",
 					"title": "Met Station",
 					"sensorType": 4
@@ -111,16 +106,14 @@ class MetDATFileParser(Extractor):
 		else:
 			sensor_id = sensor_data['id']
 
-		# Look for stream.
+		# Get stream or create if not found
 		stream_data = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
 		if not stream_data:
-			stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, {
-					"type": "Point",
-					"coordinates": [0,0,0]
-				})
+			stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
 		else:
 			stream_id = stream_data['id']
-		
+
+
 		# Get metadata to check till what time the file was processed last. Start processing the file after this time
 		allmd = pyclowder.files.download_metadata(connector, host, secret_key, resource['id'])
 		last_processed_time = 0
@@ -134,17 +127,20 @@ class MetDATFileParser(Extractor):
 					datapoint_count = 0
 				delete_metadata(connector, host, secret_key, resource['id'], md['agent']['name'].split("/")[-1])
 
+
 		# Parse file and get all the records in it.
-		records = parse_file(inputfile, last_processed_time, utc_offset=ISO_8601_UTC_OFFSET)
+		ISO_8601_UTC_OFFSET = dateutil.tz.tzoffset("-07:00", -7 * 60 * 60)
+		records = parse_file(resource["local_paths"][0], last_processed_time, utc_offset=ISO_8601_UTC_OFFSET)
 		# Add props to each record.
 		for record in records:
-			record['properties']['source_file'] = fileId
+			record['properties']['source_file'] = resource['id']
 			record['stream_id'] = str(stream_id)
 
 		for record in records:
 			pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
 												  record['start_time'], record['end_time'], record['properties'])
 
+		# Mark dataset as processed
 		metadata = terrautils.extractors.build_metadata(host, self.extractor_info['name'], resource['id'], {
 			"last processed time": records[-1]["end_time"],
 			"datapoints_created": datapoint_count + len(records)}, 'file')
