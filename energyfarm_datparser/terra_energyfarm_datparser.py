@@ -79,16 +79,16 @@ class MetDATFileParser(Extractor):
 
 		# TODO: Replace these with calls to Clowder fixed metadata
 		stream_name = 'Energy Farm Observations'
-		if 'CEN' in resource['name']:
-			self.sensor_name+= ' - CEN'
+		if 'Weather CEN' in resource['name']:
+			curr_sens = self.sensor_name + ' - CEN'
 			stream_name+= ' CEN'
 			main_coords = [-88.199801,40.062051,0]
-		elif 'NE' in resource['name']:
-			self.sensor_name+= ' - NE'
+		elif 'WeatherNE' in resource['name']:
+			curr_sens = self.sensor_name + ' - NE'
 			stream_name+= ' NE'
 			main_coords = [-88.193298,40.067379,0]
-		elif 'SE' in resource['name']:
-			self.sensor_name+= ' - SE'
+		elif 'WeatherSE' in resource['name']:
+			curr_sens = self.sensor_name + ' - SE'
 			stream_name+= ' SE'
 			main_coords = [-88.193573,40.056910,0]
 		geom = {
@@ -97,9 +97,9 @@ class MetDATFileParser(Extractor):
 		}
 
 		# Get sensor or create if not found
-		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, self.sensor_name)
+		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, curr_sens)
 		if not sensor_data:
-			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, geom, {
+			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, curr_sens, geom, {
 					"id": "Met Station",
 					"title": "Met Station",
 					"sensorType": 4
