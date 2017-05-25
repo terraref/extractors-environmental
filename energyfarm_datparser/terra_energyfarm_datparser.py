@@ -137,14 +137,19 @@ class MetDATFileParser(Extractor):
 			record['properties']['source_file'] = resource['id']
 			record['stream_id'] = str(stream_id)
 
+		dp = 0
 		for record in records:
-			pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
+			try:
+				pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
 												  record['start_time'], record['end_time'], record['properties'])
+				dp += 1
+			except:
+				logging.error("error creating datapoint at "+record['start_time'])
 
 		# Mark dataset as processed
 		metadata = terrautils.extractors.build_metadata(host, self.extractor_info['name'], resource['id'], {
 			"last processed time": records[-1]["end_time"],
-			"datapoints_created": datapoint_count + len(records)}, 'file')
+			"datapoints_created": datapoint_count + dp}, 'file')
 		pyclowder.files.upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
 		endtime = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
