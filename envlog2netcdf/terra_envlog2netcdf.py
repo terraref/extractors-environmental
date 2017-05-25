@@ -82,7 +82,7 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         out_dir = os.path.join(self.output_dir, timestamp)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        out_filename = terrautils.extractors.get_output_filename(ds_info['name'], 'nc')
+        out_filename = terrautils.extractors.get_output_filename(ds_info['name'], 'nc', hms=resource['name'][11:19])
         out_netcdf = os.path.join(out_dir, out_filename)
 
         # Create netCDF if it doesn't exist
