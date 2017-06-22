@@ -8,7 +8,7 @@ from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
 import pyclowder.files
 import pyclowder.datasets
-import pyclowder.geostreams
+import terrautils.geostreams
 import terrautils.extractors
 
 from parser import *
@@ -73,9 +73,9 @@ class IrrigationFileParser(Extractor):
         }
 
         # Get sensor or create if not found
-        sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, self.sensor_name)
+        sensor_data = terrautils.geostreams.get_sensor_by_name(connector, host, secret_key, self.sensor_name)
         if not sensor_data:
-            sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, geom, {
+            sensor_id = terrautils.geostreams.create_sensor(connector, host, secret_key, self.sensor_name, geom, {
                 "id": "MAC Met Station",
                 "title":"MAC Met Station",
                 "sensorType": 4
@@ -85,9 +85,9 @@ class IrrigationFileParser(Extractor):
 
         # Get stream or create if not found
         stream_name = "Irrigation Observations"
-        stream_data =pyclowder.geostreams.get_stream_by_name(connector,host, secret_key, stream_name)
+        stream_data =terrautils.geostreams.get_stream_by_name(connector,host, secret_key, stream_name)
         if not stream_data:
-            stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
+            stream_id = terrautils.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
         else:
             stream_id = stream_data['id']
 
@@ -98,7 +98,7 @@ class IrrigationFileParser(Extractor):
             record['source_file'] = resource["id"]
             record['stream_id'] = str(stream_id)
 
-            pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
+            terrautils.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
                                                   record['start_time'], record['end_time'], record['properties'])
 
         # Mark dataset as processed

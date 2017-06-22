@@ -11,7 +11,7 @@ from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
 import pyclowder.files
 import pyclowder.datasets
-import pyclowder.geostreams
+import terrautils.geostreams
 import terrautils.extractors
 
 import environmental_logger_json2netcdf as ela
@@ -142,18 +142,18 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
 
     with Dataset(ncdf, "r") as netCDF_handle:
         sensor_name = "Full Field - Environmental Logger"
-        sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, sensor_name)
+        sensor_data = terrautils.geostreams.get_sensor_by_name(connector, host, secret_key, sensor_name)
         if not sensor_data:
-            sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, sensor_name, geom)
+            sensor_id = terrautils.geostreams.create_sensor(connector, host, secret_key, sensor_name, geom)
         else:
             sensor_id = sensor_data['id']
 
         stream_list = set([sensor_info.name for sensor_info in netCDF_handle.variables.values() if sensor_info.name.startswith('sensor')])
         for stream in stream_list:
             stream_name = "EnvLog %s - Full Field" % stream
-            stream_data = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
+            stream_data = terrautils.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
             if not stream_data:
-                stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
+                stream_id = terrautils.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
             else:
                 stream_id = stream_data['id']
 
@@ -167,7 +167,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                         time_point = (datetime.datetime(year=1970, month=1, day=1) + \
                                       datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
 
-                        pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, geom,
+                        terrautils.geostreams.create_datapoint(connector, host, secret_key, stream_id, geom,
                                                               time_point, time_point, data_points[index])
             except:
                 logging.error("NetCDF attribute not found: %s" % stream)

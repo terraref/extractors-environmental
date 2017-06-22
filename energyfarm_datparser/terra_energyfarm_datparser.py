@@ -9,7 +9,7 @@ from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
 import pyclowder.files
 import pyclowder.datasets
-import pyclowder.geostreams
+import terrautils.geostreams
 import terrautils.extractors
 
 from parser import *
@@ -97,9 +97,9 @@ class MetDATFileParser(Extractor):
 		}
 
 		# Get sensor or create if not found
-		sensor_data = pyclowder.geostreams.get_sensor_by_name(connector, host, secret_key, curr_sens)
+		sensor_data = terrautils.geostreams.get_sensor_by_name(connector, host, secret_key, curr_sens)
 		if not sensor_data:
-			sensor_id = pyclowder.geostreams.create_sensor(connector, host, secret_key, curr_sens, geom, {
+			sensor_id = terrautils.geostreams.create_sensor(connector, host, secret_key, curr_sens, geom, {
 					"id": "Met Station",
 					"title": "Met Station",
 					"sensorType": 4
@@ -108,9 +108,9 @@ class MetDATFileParser(Extractor):
 			sensor_id = sensor_data['id']
 
 		# Get stream or create if not found
-		stream_data = pyclowder.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
+		stream_data = terrautils.geostreams.get_stream_by_name(connector, host, secret_key, stream_name)
 		if not stream_data:
-			stream_id = pyclowder.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
+			stream_id = terrautils.geostreams.create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
 		else:
 			stream_id = stream_data['id']
 
@@ -140,7 +140,7 @@ class MetDATFileParser(Extractor):
 		dp = 0
 		for record in records:
 			try:
-				pyclowder.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
+				terrautils.geostreams.create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
 												  record['start_time'], record['end_time'], record['properties'])
 				dp += 1
 			except:
