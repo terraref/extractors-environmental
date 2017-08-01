@@ -67,11 +67,9 @@ class MetDATFileParser(Extractor):
 		# Check for expected input files before beginning processing
 		if len(get_all_files(resource)) >= 23:
 			md = pyclowder.datasets.download_metadata(connector, host, secret_key, resource['id'])
-			for m in md:
-				if 'agent' in m and 'name' in m['agent'] and m['agent']['name'].endswith(self.extractor_info['name']):
-					logging.info('skipping %s, dataset already handled' % resource['id'])
-					return CheckMessage.ignore
-
+			if terrautils.metadata.get_extractor_metadata(md, self.extractor_info['name']) and not self.force_overwrite:
+				logging.info('skipping %s, dataset already handled' % resource['id'])
+				return CheckMessage.ignore
 			return CheckMessage.download
 		else:
 			logging.info('skipping %s, not all input files are ready' % resource['id'])
