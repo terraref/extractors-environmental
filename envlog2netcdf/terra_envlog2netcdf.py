@@ -13,6 +13,7 @@ import pyclowder.files
 import pyclowder.datasets
 import terrautils.geostreams
 import terrautils.extractors
+import terrautils.sensors
 
 import environmental_logger_json2netcdf as ela
 
