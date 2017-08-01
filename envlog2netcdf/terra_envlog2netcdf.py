@@ -28,9 +28,6 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         influx_pass = os.getenv("INFLUXDB_PASSWORD", "")
 
         # add any additional arguments to parser
-        self.parser.add_argument('--output', '-o', dest="output_dir", type=str, nargs='?',
-                                 default="/home/extractor/sites/ua-mac/Level_1/EnvironmentLogger",
-                                 help="root directory where timestamp & output directories will be created")
         self.parser.add_argument('--overwrite', dest="force_overwrite", type=bool, nargs='?', default=False,
                                  help="whether to overwrite output file if it already exists in output directory")
         self.parser.add_argument('--influxHost', dest="influx_host", type=str, nargs='?',
@@ -52,7 +49,6 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
         logging.getLogger('__main__').setLevel(logging.DEBUG)
 
         # assign other arguments
-        self.output_dir = self.args.output_dir
         self.force_overwrite = self.args.force_overwrite
         self.influx_params = {
             "host": self.args.influx_host,
@@ -76,14 +72,12 @@ class EnvironmentLoggerJSON2NetCDF(Extractor):
 
         # path to input JSON file
         in_envlog = resource['local_paths'][0]
-
         ds_info = pyclowder.datasets.get_info(connector, host, secret_key, resource['parent']['id'])
-        timestamp = resource['name'].split("_")[0]
-        out_dir = os.path.join(self.output_dir, timestamp)
+        out_netcdf = terrautils.sensors.get_sensor_path_by_dataset("ua-mac", "Level_1", ds_info['name'],
+                                                                     "EnvironmentLogger", 'nc', hms=resource['name'][11:19])
+        out_dir = os.path.dirname(out_netcdf)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
-        out_filename = terrautils.extractors.get_output_filename(ds_info['name'], 'nc', hms=resource['name'][11:19])
-        out_netcdf = os.path.join(out_dir, out_filename)
 
         # Create netCDF if it doesn't exist
         if not os.path.isfile(out_netcdf) or self.force_overwrite:
