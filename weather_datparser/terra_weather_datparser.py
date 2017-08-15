@@ -54,9 +54,8 @@ class MetDATFileParser(TerrarefExtractor):
 		# TODO: Get this from Clowder fixed metadata
 		geom = {
 			"type": "Point",
-			"coordinates": [-111.974304, 33.075576, 0]
+			"coordinates": [-111.974304, 33.075576, 361]
 		}
-
 		disp_name = self.sensors.get_display_name()
 
 		# Get sensor or create if not found
@@ -71,7 +70,7 @@ class MetDATFileParser(TerrarefExtractor):
 			sensor_id = sensor_data['id']
 
 		# Get stream or create if not found
-		stream_name = disp_name + " - Weather Observations"
+		stream_name = "Weather Observations"
 		stream_data = get_stream_by_name(connector, host, secret_key, stream_name)
 		if not stream_data:
 			stream_id = create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
