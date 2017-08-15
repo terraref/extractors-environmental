@@ -39,7 +39,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         out_netcdf = self.create_sensor_path(hms=resource['name'][11:19])
 
         # Create netCDF if it doesn't exist
-        if not os.path.isfile(out_netcdf) or self.force_overwrite:
+        if not os.path.isfile(out_netcdf) or self.overwrite:
             logging.info("converting JSON to: %s" % out_netcdf)
             ela.mainProgramTrigger(in_envlog, out_netcdf)
 
