@@ -20,12 +20,16 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         super(EnvironmentLoggerJSON2NetCDF, self).__init__()
 
         # parse command line and load default logging configuration
-        self.setup(sensor='envlog2netcdf')
+        self.setup(sensor='envlog_netcdf')
 
     def check_message(self, connector, host, secret_key, resource, parameters):
         # Only trigger extraction if the newly added file is a relevant JSON file
         if not resource['name'].endswith("_environmentlogger.json"):
             return CheckMessage.ignore
+
+        ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
+        timestamp = ds_info['name'].split(" - ")[1]
+        out_netcdf = self.create_sensor_path(timestamp, hms=resource['name'][11:19])
 
         return CheckMessage.download
 
@@ -36,7 +40,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         in_envlog = resource['local_paths'][0]
         ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
         timestamp = ds_info['name'].split(" - ")[1]
-        out_netcdf = self.create_sensor_path(hms=resource['name'][11:19])
+        out_netcdf = self.create_sensor_path(timestamp, hms=resource['name'][11:19])
 
         # Create netCDF if it doesn't exist
         if not os.path.isfile(out_netcdf) or self.overwrite:
@@ -49,7 +53,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
             # Fetch dataset ID by dataset name if not provided
             logging.info("uploading netCDF file to Clowder")
             target_dsid = build_dataset_hierarchy(connector, host, secret_key, self.clowderspace,
-                                      self.sensors.get_display_name(), timestamp[:4], timestamp[:7],
+                                      self.sensors.get_display_name(), timestamp[:4], timestamp[5:7],
                                       leaf_ds_name=resource['dataset_info']['name'])
             upload_to_dataset(connector, host, secret_key, target_dsid, out_netcdf)
 

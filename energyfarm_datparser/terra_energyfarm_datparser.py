@@ -114,7 +114,7 @@ class MetDATFileParser(TerrarefExtractor):
 				logging.error("error creating datapoint at "+record['start_time'])
 
 		# Mark dataset as processed
-		metadata = build_metadata(host, self.extractor_info['name'], resource['id'], {
+		metadata = build_metadata(host, self.extractor_info, resource['id'], {
 			"last processed time": records[-1]["end_time"],
 			"datapoints_created": datapoint_count + dp}, 'file')
 		upload_metadata(connector, host, secret_key, resource['id'], metadata)

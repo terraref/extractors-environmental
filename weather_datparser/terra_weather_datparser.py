@@ -119,7 +119,7 @@ class MetDATFileParser(TerrarefExtractor):
 			lastAggregatedFile = file
 
 		# Mark dataset as processed
-		metadata = build_metadata(host, self.extractor_info['name'], resource['id'], {
+		metadata = build_metadata(host, self.extractor_info, resource['id'], {
 			"datapoints_created": len(aggregationRecords)}, 'dataset')
 		upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
