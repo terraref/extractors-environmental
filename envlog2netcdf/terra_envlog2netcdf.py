@@ -31,6 +31,9 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         timestamp = ds_info['name'].split(" - ")[1]
         out_netcdf = self.create_sensor_path(timestamp, hms=resource['name'][11:19])
 
+        if os.path.isfile(out_netcdf) and not self.overwrite:
+            return CheckMessage.ignore
+
         return CheckMessage.download
 
     def process_message(self, connector, host, secret_key, resource, parameters):
