@@ -6,7 +6,7 @@ import urlparse
 
 from pyclowder.utils import CheckMessage
 from pyclowder.datasets import download_metadata, upload_metadata
-from pyclowder.metadata import get_extractor_metadata
+from terrautils.metadata import get_extractor_metadata
 from terrautils.extractors import TerrarefExtractor, is_latest_file, build_metadata
 from terrautils.geostreams import create_datapoint, create_sensor, create_stream, \
 	get_stream_by_name, get_sensor_by_name
@@ -84,6 +84,7 @@ class MetDATFileParser(TerrarefExtractor):
 		aggregationState = None
 		lastAggregatedFile = None
 		target_files = get_all_files(resource)
+		datapoint_count = 0
 		# To work with the aggregation process, add an extra NULL file to indicate we are done with all the files.
 		for file in (list(target_files) + [ None ]):
 			if file == None:
@@ -115,12 +116,13 @@ class MetDATFileParser(TerrarefExtractor):
 				record['stream_id'] = str(stream_id)
 				create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
 								record['start_time'], record['end_time'], record['properties'])
+				datapoint_count += 1
 
 			lastAggregatedFile = file
 
 		# Mark dataset as processed
 		metadata = build_metadata(host, self.extractor_info, resource['id'], {
-			"datapoints_created": len(aggregationRecords)}, 'dataset')
+			"datapoints_created": datapoint_count}, 'dataset')
 		upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
 		self.end_message()

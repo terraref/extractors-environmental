@@ -1,16 +1,10 @@
 #!/usr/bin/env python
 
-import datetime
 import logging
 import os
 import requests
 
-from pyclowder.extractors import Extractor
 from pyclowder.utils import CheckMessage
-import pyclowder.files
-import pyclowder.datasets
-import terrautils.geostreams
-import terrautils.extractors
 
 from pyclowder.files import upload_metadata, download_metadata
 from terrautils.extractors import TerrarefExtractor, build_metadata
@@ -45,7 +39,6 @@ class MetDATFileParser(TerrarefExtractor):
 	def process_message(self, connector, host, secret_key, resource, parameters):
 		self.start_message()
 
-		# TODO: Replace these with calls to Clowder fixed metadata
 		stream_name = 'Energy Farm Observations'
 		disp_name = self.sensors.get_display_name()
 		if 'Weather CEN' in resource['name']:

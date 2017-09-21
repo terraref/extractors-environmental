@@ -67,7 +67,7 @@ class IrrigationFileParser(TerrarefExtractor):
         # Mark dataset as processed
         metadata = build_metadata(host, self.extractor_info, resource['id'], {
             "datapoints_created": len(records)}, 'file')
-        upload_metadata(connector, host, secret_key, resource['id'], metadata)
+        upload_metadata(connector, host, secret_key, resource['parent']['id'], metadata)
 
         self.end_message()
 

@@ -29,7 +29,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
 
         ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
         timestamp = ds_info['name'].split(" - ")[1]
-        out_netcdf = self.create_sensor_path(timestamp, hms=resource['name'][11:19])
+        out_netcdf = self.sensors.get_sensor_path(timestamp)
 
         if os.path.isfile(out_netcdf) and not self.overwrite:
             return CheckMessage.ignore
@@ -43,21 +43,20 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         in_envlog = resource['local_paths'][0]
         ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
         timestamp = ds_info['name'].split(" - ")[1]
-        out_netcdf = self.create_sensor_path(timestamp, hms=resource['name'][11:19])
+        out_netcdf = self.sensors.create_sensor_path(timestamp)
 
         # Create netCDF if it doesn't exist
         if not os.path.isfile(out_netcdf) or self.overwrite:
             logging.info("converting JSON to: %s" % out_netcdf)
             ela.mainProgramTrigger(in_envlog, out_netcdf)
 
-            self.created_count += 1
+            self.created += 1
             self.bytes += os.path.getsize(out_netcdf)
 
             # Fetch dataset ID by dataset name if not provided
-            logging.info("uploading netCDF file to Clowder")
             target_dsid = build_dataset_hierarchy(connector, host, secret_key, self.clowderspace,
                                       self.sensors.get_display_name(), timestamp[:4], timestamp[5:7],
-                                      leaf_ds_name=resource['dataset_info']['name'])
+                                      leaf_ds_name=self.sensors.get_display_name()+' - '+timestamp)
             upload_to_dataset(connector, host, secret_key, target_dsid, out_netcdf)
 
             # Push to geostreams
@@ -89,13 +88,15 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
         sensor_name = "Full Field - Environmental Logger"
         sensor_data = get_sensor_by_name(connector, host, secret_key, sensor_name)
         if not sensor_data:
-            sensor_id = create_sensor(connector, host, secret_key, sensor_name, geom)
+            sensor_id = create_sensor(connector, host, secret_key, sensor_name, geom,
+                                      {"id": "MAC Field Scanner", "title": "MAC Field Scanner", "sensorType": 4},
+                                      "Maricopa")
         else:
             sensor_id = sensor_data['id']
 
         stream_list = set([sensor_info.name for sensor_info in netCDF_handle.variables.values() if sensor_info.name.startswith('sensor')])
         for stream in stream_list:
-            stream_name = "EnvLog %s - Full Field" % stream
+            stream_name = "(EL) %s" % stream
             stream_data = get_stream_by_name(connector, host, secret_key, stream_name)
             if not stream_data:
                 stream_id = create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
@@ -103,17 +104,19 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                 stream_id = stream_data['id']
 
             try:
-                memberlist = netCDF_handle.get_variables_by_attributes(sensor=lambda x: x is not None)
+                memberlist = netCDF_handle.get_variables_by_attributes(sensor=stream)
                 for members in memberlist:
                     data_points = _produce_attr_dict(members)
 
                     for index in range(len(data_points)):
-                        time_format = "%Y-%m-%dT%H:%M:%S-07:00"
-                        time_point = (datetime.datetime(year=1970, month=1, day=1) + \
-                                      datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
+                        dp_obj = data_points[index]
+                        if dp_obj["sensor"] == stream:
+                            time_format = "%Y-%m-%dT%H:%M:%S-07:00"
+                            time_point = (datetime.datetime(year=1970, month=1, day=1) + \
+                                          datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
 
-                        create_datapoint(connector, host, secret_key, stream_id, geom,
-                                                              time_point, time_point, data_points[index])
+                            create_datapoint(connector, host, secret_key, stream_id, geom,
+                                                                  time_point, time_point, dp_obj)
             except:
                 logging.error("NetCDF attribute not found: %s" % stream)
 
