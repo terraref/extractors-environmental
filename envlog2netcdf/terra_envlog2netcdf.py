@@ -3,12 +3,15 @@
 import datetime
 import os
 import logging
+import shutil
+import subprocess
+import nco
 from netCDF4 import Dataset
 
 from pyclowder.utils import CheckMessage
 from pyclowder.datasets import get_info, get_file_list
-from pyclowder.files import upload_to_dataset
-from terrautils.extractors import TerrarefExtractor, build_dataset_hierarchy
+from pyclowder.files import upload_to_dataset, upload_metadata, download_metadata
+from terrautils.extractors import TerrarefExtractor, build_dataset_hierarchy, build_metadata
 from terrautils.geostreams import get_sensor_by_name, create_datapoint, create_stream, \
     create_sensor, get_stream_by_name
 
@@ -27,11 +30,9 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         if not resource['name'].endswith("_environmentlogger.json"):
             return CheckMessage.ignore
 
-        ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
-        timestamp = ds_info['name'].split(" - ")[1]
-        out_netcdf = self.sensors.get_sensor_path(timestamp)
-
-        if os.path.isfile(out_netcdf) and not self.overwrite:
+        file_md = download_metadata(connector, host, secret_key, resource['id'], self.extractor_info['name'])
+        if len(file_md) > 0:
+            # This file was already processed
             return CheckMessage.ignore
 
         return CheckMessage.download
@@ -43,27 +44,43 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         in_envlog = resource['local_paths'][0]
         ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
         timestamp = ds_info['name'].split(" - ")[1]
-        out_netcdf = self.sensors.create_sensor_path(timestamp)
+        out_temp = "temp_output.nc"
+        out_fullday_netcdf = self.sensors.create_sensor_path(timestamp)
 
-        # Create netCDF if it doesn't exist
-        if not os.path.isfile(out_netcdf) or self.overwrite:
-            logging.info("converting JSON to: %s" % out_netcdf)
-            ela.mainProgramTrigger(in_envlog, out_netcdf)
+        logging.info("converting JSON to: %s" % out_temp)
+        ela.mainProgramTrigger(in_envlog, out_temp)
 
-            self.created += 1
-            self.bytes += os.path.getsize(out_netcdf)
+        self.created += 1
+        self.bytes += os.path.getsize(out_temp)
 
-            # Fetch dataset ID by dataset name if not provided
-            target_dsid = build_dataset_hierarchy(host, secret_key, self.clowder_user, self.clowder_pass, self.clowderspace,
-                                      self.sensors.get_display_name(), timestamp[:4], timestamp[5:7],
-                                      leaf_ds_name=self.sensors.get_display_name()+' - '+timestamp)
-            upload_to_dataset(connector, host, secret_key, target_dsid, out_netcdf)
+        # Push to geostreams
+        prepareDatapoint(connector, host, secret_key, resource, out_temp)
 
-            # Push to geostreams
-            prepareDatapoint(connector, host, secret_key, resource, out_netcdf)
-
+        # Merge this chunk into full day
+        if not os.path.exists(out_fullday_netcdf):
+            shutil.move(out_temp, out_fullday_netcdf)
         else:
-            logging.info("%s already exists; skipping" % out_netcdf)
+            cmd = "ncrcat --record-append %s %s" % (out_temp, out_fullday_netcdf)
+            subprocess.call([cmd], shell=True)
+            os.remove(out_temp)
+
+        # Fetch dataset ID by dataset name if not provided
+        target_dsid = build_dataset_hierarchy(host, secret_key, self.clowder_user, self.clowder_pass, self.clowderspace,
+                                  self.sensors.get_display_name(), timestamp[:4], timestamp[5:7],
+                                  leaf_ds_name=self.sensors.get_display_name()+' - '+timestamp)
+        ds_files = get_file_list(connector, host, secret_key, target_dsid)
+        found_full = False
+        for f in ds_files:
+            if f['filepath'] == out_fullday_netcdf:
+                found_full = True
+        if not found_full:
+            upload_to_dataset(connector, host, secret_key, target_dsid, out_fullday_netcdf)
+
+        # Tell Clowder this is completed so subsequent file updates don't daisy-chain
+        ext_meta = build_metadata(host, self.extractor_info, resource['id'], {
+            "output_dataset": target_dsid
+        }, 'file')
+        upload_metadata(connector, host, secret_key, resource['id'], ext_meta)
 
         self.end_message()
 
