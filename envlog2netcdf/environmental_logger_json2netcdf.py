@@ -93,22 +93,38 @@ _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1},
                     u'ppm': {"original":"part per million", "SI":"mol mol-1", "power":1e-6}, 
                     '': ''}
 
-_CF_STANDARDS    = {u'precipitation' : "precipitation_flux",
-                    u'airPressure'   : "atmospheric_air_pressure",
-                    u'relHumidity'   : "relative_humidity",
-                    u"windDirection" : "wind_from_direction",
-                    u"sensor_co2"    : "mole_fraction_of_carbon_dioxide_in_air"}
+_CF_STANDARDS    = {
+    'precipitation' : "precipitation_flux",
+    'airPressure'   : "atmospheric_air_pressure",
+    'relHumidity'   : "relative_humidity",
+    "windDirection" : "wind_from_direction",
+    "sensor_co2"    : "mole_fraction_of_carbon_dioxide_in_air",
+    "temperature"   : "air_temperature",
+    "brightness"    : "illuminance",
+    "sunDirection"  : "solar_zenith_angle",
+    "windVelocity"  : "wind_speed"
+}
 
-_NAMES = {'airPressure'  : 'Atmospheric Air Pressure',
-          'brightness'   : 'Brightness',
-          'sensor par'   : 'Photosynthetically Active Radiation',
-          'sensor co2'   : 'Atmosperic CO2 Concentration',
-          'sunDirection' : 'Solar zenith (or elevation) angle (under discussion right now)',
-          'temperature'  : 'Atmosperic Temperature',
-          'relHumidity'  : 'Relative Humidity',
-          'precipitation': 'Precipation Rate',
-          'windDirection': 'Wind Direction',
-          'windVelocity' : 'Wind Speed'}
+_NAMES = {
+    'airPressure'  : 'Atmospheric Air Pressure',
+    'brightness'   : 'Illuminance',
+    'sensor par'   : 'Photosynthetically Active Radiation',
+    'sensor co2'   : 'Atmosperic CO2 Concentration',
+    'sunDirection' : 'Solar zenith angle',
+    'temperature'  : 'Air Temperature',
+    'relHumidity'  : 'Relative Humidity',
+    'precipitation': 'Precipation Rate',
+    'windDirection': 'Wind Direction',
+    'windVelocity' : 'Wind Speed'
+}
+
+_DESCRIPTIONS = {
+    "temperature": "bulk temperature of the air, not the surface (skin) temperature",
+    "sunDirection": "angle between the line of sight to the sun and the local vertical",
+    "windVelocity": "magnitude of the wind velocity",
+    "brightness": "total luminous flux incident on a surface, per unit area",
+    "relHumidity": "Ratio of partial pressure of water vapor to equilibrium vapor pressure at measured temperature"
+}
 
 _UNIX_BASETIME = date(year=1970, month=1, day=1)
 
@@ -291,8 +307,8 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
                 setattr(valueVariable, "standard_name", _CF_STANDARDS[data])
             if data in _NAMES:
                 setattr(valueVariable, "long_name", _NAMES[data])
-            if data == "relHumidity":
-                setattr(valueVariable, "description", "Ratio of partial pressure of water vapor to equilibrium vapor pressure at measured temperature")
+            if data in _DESCRIPTIONS:
+                setattr(valueVariable, "description", _DESCRIPTIONS[data])
 
         wvl_lgr, spectrum, maxFixedIntensity = handleSpectrometer(loggerReadings) #writing the data from spectrometer
 
