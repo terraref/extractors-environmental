@@ -7,7 +7,9 @@ RUN useradd -u 49044 extractor \
     && mkdir -p /home/extractor/sites/ua-mac/Level_1/EnvironmentLogger \
     && chown -R extractor /home/extractor
 
-RUN pip install nco
+RUN apt-get -y update && \
+    apt-get -y install nco && \
+    pip install nco
 
 # command to run when starting docker
 COPY entrypoint.sh extractor_info.json *.py /home/extractor/

@@ -60,7 +60,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         if not os.path.exists(out_fullday_netcdf):
             shutil.move(out_temp, out_fullday_netcdf)
         else:
-            cmd = "ncrcat --record-append %s %s" % (out_temp, out_fullday_netcdf)
+            cmd = "ncrcat --record_append %s %s" % (out_temp, out_fullday_netcdf)
             subprocess.call([cmd], shell=True)
             os.remove(out_temp)
 
