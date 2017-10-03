@@ -54,7 +54,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
             self.bytes += os.path.getsize(out_netcdf)
 
             # Fetch dataset ID by dataset name if not provided
-            target_dsid = build_dataset_hierarchy(connector, host, secret_key, self.clowderspace,
+            target_dsid = build_dataset_hierarchy(host, secret_key, self.clowder_user, self.clowder_pass, self.clowderspace,
                                       self.sensors.get_display_name(), timestamp[:4], timestamp[5:7],
                                       leaf_ds_name=self.sensors.get_display_name()+' - '+timestamp)
             upload_to_dataset(connector, host, secret_key, target_dsid, out_netcdf)
