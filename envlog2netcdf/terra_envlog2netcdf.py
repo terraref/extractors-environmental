@@ -96,29 +96,30 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
 
         stream_list = set([sensor_info.name for sensor_info in netCDF_handle.variables.values() if sensor_info.name.startswith('sensor')])
         for stream in stream_list:
-            stream_name = "(EL) %s" % stream
-            stream_data = get_stream_by_name(connector, host, secret_key, stream_name)
-            if not stream_data:
-                stream_id = create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
-            else:
-                stream_id = stream_data['id']
+            if stream != "sensor_spectrum":
+                stream_name = "(EL) %s" % stream
+                stream_data = get_stream_by_name(connector, host, secret_key, stream_name)
+                if not stream_data:
+                    stream_id = create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
+                else:
+                    stream_id = stream_data['id']
 
-            try:
-                memberlist = netCDF_handle.get_variables_by_attributes(sensor=stream)
-                for members in memberlist:
-                    data_points = _produce_attr_dict(members)
+                try:
+                    memberlist = netCDF_handle.get_variables_by_attributes(sensor=stream)
+                    for members in memberlist:
+                        data_points = _produce_attr_dict(members)
 
-                    for index in range(len(data_points)):
-                        dp_obj = data_points[index]
-                        if dp_obj["sensor"] == stream:
-                            time_format = "%Y-%m-%dT%H:%M:%S-07:00"
-                            time_point = (datetime.datetime(year=1970, month=1, day=1) + \
-                                          datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
+                        for index in range(len(data_points)):
+                            dp_obj = data_points[index]
+                            if dp_obj["sensor"] == stream:
+                                time_format = "%Y-%m-%dT%H:%M:%S-07:00"
+                                time_point = (datetime.datetime(year=1970, month=1, day=1) + \
+                                              datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
 
-                            create_datapoint(connector, host, secret_key, stream_id, geom,
-                                                                  time_point, time_point, dp_obj)
-            except:
-                logging.error("NetCDF attribute not found: %s" % stream)
+                                create_datapoint(connector, host, secret_key, stream_id, geom,
+                                                                      time_point, time_point, dp_obj)
+                except:
+                    logging.error("NetCDF attribute not found: %s" % stream)
 
 if __name__ == "__main__":
     extractor = EnvironmentLoggerJSON2NetCDF()
