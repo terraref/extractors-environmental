@@ -80,8 +80,6 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
 
             # Push to geostreams
             prepareDatapoint(connector, host, secret_key, resource, out_temp)
-
-        if os.path.exists(out_temp):
             os.remove(out_temp)
 
         # Fetch dataset ID by dataset name if not provided
@@ -91,7 +89,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         ds_files = get_file_list(connector, host, secret_key, target_dsid)
         found_full = False
         for f in ds_files:
-            if f['filepath'] == out_fullday_netcdf:
+            if f['filename'] == os.path.basename(out_fullday_netcdf):
                 found_full = True
         if not found_full:
             upload_to_dataset(connector, host, secret_key, target_dsid, out_fullday_netcdf)
