@@ -5,7 +5,7 @@ import os
 import logging
 import shutil
 import subprocess
-import nco
+import time
 from netCDF4 import Dataset
 
 from pyclowder.utils import CheckMessage
@@ -46,6 +46,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         timestamp = ds_info['name'].split(" - ")[1]
         out_temp = "temp_output.nc"
         out_fullday_netcdf = self.sensors.create_sensor_path(timestamp)
+        lockfile = out_fullday_netcdf.replace(".nc", ".lock")
 
         logging.info("converting JSON to: %s" % out_temp)
         ela.mainProgramTrigger(in_envlog, out_temp)
@@ -53,15 +54,34 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         self.created += 1
         self.bytes += os.path.getsize(out_temp)
 
-        # Push to geostreams
-        prepareDatapoint(connector, host, secret_key, resource, out_temp)
-
         # Merge this chunk into full day
         if not os.path.exists(out_fullday_netcdf):
             shutil.move(out_temp, out_fullday_netcdf)
+
+            # Push to geostreams
+            prepareDatapoint(connector, host, secret_key, resource, out_fullday_netcdf)
         else:
-            cmd = "ncrcat --record_append %s %s" % (out_temp, out_fullday_netcdf)
-            subprocess.call([cmd], shell=True)
+            # Create lockfile to make sure we don't step on each others' toes
+            total_wait = 0
+            max_wait_mins = 10
+            while os.path.exists(lockfile):
+                time.sleep(1)
+                total_wait += 1
+                if total_wait > max_wait_mins*60:
+                    logging.error("wait time for %s exceeded %s minutes, unlocking" % (lockfile, max_wait_mins))
+                    os.remove(lockfile)
+
+            open(lockfile, 'w').close()
+            try:
+                cmd = "ncrcat --record_append %s %s" % (out_temp, out_fullday_netcdf)
+                subprocess.call([cmd], shell=True)
+            finally:
+                os.remove(lockfile)
+
+            # Push to geostreams
+            prepareDatapoint(connector, host, secret_key, resource, out_temp)
+
+        if os.path.exists(out_temp):
             os.remove(out_temp)
 
         # Fetch dataset ID by dataset name if not provided
