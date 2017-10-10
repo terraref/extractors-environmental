@@ -18,7 +18,10 @@ from terrautils.geostreams import get_sensor_by_name, create_datapoints, create_
 import environmental_logger_json2netcdf as ela
 
 
-DP_BATCH_SIZE = 3000 # Max number of datapoints per single API call to submit
+def add_local_arguments(parser):
+    # add any additional arguments to parser
+    parser.add_argument('--batchsize', type=int, default=3000,
+                        help="max number of datapoints to submit at a time")
 
 class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
     def __init__(self):
@@ -26,6 +29,8 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
 
         # parse command line and load default logging configuration
         self.setup(sensor='envlog_netcdf')
+
+        self.batchsize = self.args.batchsize
 
     def check_message(self, connector, host, secret_key, resource, parameters):
         # Only trigger extraction if the newly added file is a relevant JSON file
@@ -81,7 +86,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
                 os.remove(lockfile)
 
             # Push to geostreams
-            prepareDatapoint(connector, host, secret_key, resource, out_temp)
+            prepareDatapoint(connector, host, secret_key, resource, out_temp, self.batchsize)
             os.remove(out_temp)
 
         # Fetch dataset ID by dataset name if not provided
@@ -113,7 +118,7 @@ def _produce_attr_dict(netCDF_variable_obj):
 
     return [dict(result.items()+ {"value":str(data)}.items()) for data in netCDF_variable_obj[...]]
 
-def prepareDatapoint(connector, host, secret_key, resource, ncdf):
+def prepareDatapoint(connector, host, secret_key, resource, ncdf, batchsize):
     # TODO: Get this from Clowder
     coords = [-111.974304, 33.075576, 0]
     geom = {
@@ -161,7 +166,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                                     "properties": dp_obj
                                 })
 
-                                if len(data_point_list) > DP_BATCH_SIZE:
+                                if len(data_point_list) > batchsize:
                                     create_datapoints(connector, host, secret_key, stream_id, data_point_list)
                                     data_point_list = []
 
