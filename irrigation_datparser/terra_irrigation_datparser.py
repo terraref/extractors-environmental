@@ -21,6 +21,9 @@ class IrrigationFileParser(TerrarefExtractor):
     def __init__(self):
         super(IrrigationFileParser, self).__init__()
 
+        # add any additional arguments to parser
+        add_local_arguments(self.parser)
+
         self.setup(sensor='irrigation_datparser')
 
         self.batchsize = self.args.batchsize

@@ -23,6 +23,9 @@ class MetDATFileParser(TerrarefExtractor):
 	def __init__(self):
 		super(MetDATFileParser, self).__init__()
 
+		# add any additional arguments to parser
+		add_local_arguments(self.parser)
+
 		# parse command line and load default logging configuration
 		self.setup(sensor='energyfarm_datparser')
 
