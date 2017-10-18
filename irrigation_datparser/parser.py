@@ -5,7 +5,10 @@ import json
 
 
 def gallon2mm(value):
-    # gallons -> lit = kg -> kg m-2 s-1
+    # gallons -> lit = kg -> distributed over a field 20 m x 200 m -> kg m-2 s-1 == mm s-1 
+    # 3.78541 liters per galon
+    # 20 m x 200 m = area of field
+    # 24 * 60 * 60 is seconds per day
     if value:
         return (int(value)*3.78541)/((20*200)*(24*60*60))
     return 0.0
