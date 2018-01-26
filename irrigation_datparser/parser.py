@@ -7,7 +7,7 @@ import cfunits
 def gallon2liter(value):
     if value:
         return Units.conform(int(value), 
-			     Units('gallon / day'),
+                             Units('gallon / day'),
                              Units('liter / second'), inplace=True)
     return 0.0
 
