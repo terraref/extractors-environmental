@@ -74,7 +74,7 @@ import sys
 import os
 from datetime import date, datetime
 from netCDF4 import Dataset
-from environmental_logger_calculation import *
+import environmental_logger_calculation as elc
 
 
 _UNIT_DICTIONARY = {u'm': {"original":"meter", "SI":"meter", "power":1}, 
@@ -232,6 +232,9 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
     Main netCDF handler, write data to the netCDF file indicated.
     '''
     with Dataset(outputFileName, 'w', format=outputFileType) as netCDFHandler:
+        if "environment_sensor_fixed_infos" not in JSONArray:
+            print("unable to process this file; deprecated JSON format")
+            return
         loggerFixedInfos = JSONArray["environment_sensor_fixed_infos"]
         loggerReadings   = JSONArray["environment_sensor_readings"]
 
@@ -374,7 +377,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
 
         # Downwelling Flux = summation of (delta lambda(_wvl_dlt) * downwellingSpectralFlux)
         # Details in CalculationWorks.py
-        downwellingSpectralFlux, downwellingFlux = calculateDownwellingSpectralFlux(wvl_lgr, spectrum, delta)
+        downwellingSpectralFlux, downwellingFlux = elc.calculateDownwellingSpectralFlux(wvl_lgr, spectrum, delta)
 
         # Add data from hyperspectral_calibration.nco
         netCDFHandler.createVariable("wvl_dlt", 'f8', ("wvl_lgr",))[:] = delta
@@ -382,7 +385,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
         setattr(netCDFHandler.variables['wvl_dlt'], 'notes',"Bandwidth, also called dispersion, is between 0.455-0.495 nm across all channels. Values computed as differences between midpoints of adjacent band-centers.")
         setattr(netCDFHandler.variables['wvl_dlt'], 'long_name', "Bandwidth of environmental sensor")
 
-        netCDFHandler.createVariable("flx_sns", "f4", ("wvl_lgr",))[:] = np.array(FLX_SNS) * 1e-6
+        netCDFHandler.createVariable("flx_sns", "f4", ("wvl_lgr",))[:] = np.array(elc.FLX_SNS) * 1e-6
         setattr(netCDFHandler.variables['flx_sns'],'units', 'watt meter-2 count-1')
         setattr(netCDFHandler.variables['flx_sns'],'long_name','Flux sensitivity of each band (irradiance per count)')
         setattr(netCDFHandler.variables['flx_sns'], 'provenance', "EnvironmentalLogger calibration information from file S05673_08062015.IrradCal provided by TinoDornbusch and discussed here: https://github.com/terraref/reference-data/issues/30#issuecomment-217518434")
@@ -405,7 +408,7 @@ def main(JSONArray, outputFileType, outputFileName, wavelength=None, spectrum=No
         setattr(netCDFHandler.variables['time_integration'], 'long_name', 'Spectrometer Integration Time')
 
         # #Spectrometer area
-        netCDFHandler.createVariable("area_sensor", "f4")[...] = AREA
+        netCDFHandler.createVariable("area_sensor", "f4")[...] = elc.AREA
         setattr(netCDFHandler.variables["area_sensor"], "units", "meter2")
         setattr(netCDFHandler.variables['area_sensor'], 'long_name', 'Spectrometer Area')
 

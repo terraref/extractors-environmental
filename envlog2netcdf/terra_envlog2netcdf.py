@@ -20,7 +20,7 @@ import environmental_logger_json2netcdf as ela
 
 def add_local_arguments(parser):
     # add any additional arguments to parser
-    parser.add_argument('--batchsize', type=int, default=3000,
+    parser.add_argument('--batchsize', type=int, default=10000,
                         help="max number of datapoints to submit at a time")
 
 class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
@@ -52,13 +52,17 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
 
         # path to input JSON file
         in_envlog = resource['local_paths'][0]
+        if in_envlog.find("/netcdf/EnvironmentLogger/") > -1:
+            logging.getLogger(__name__).info("netcdf metadata JSON files are ignored")
+            return
+
         ds_info = get_info(connector, host, secret_key, resource['parent']['id'])
         timestamp = ds_info['name'].split(" - ")[1]
         out_temp = "temp_output.nc"
         out_fullday_netcdf = self.sensors.create_sensor_path(timestamp)
         lockfile = out_fullday_netcdf.replace(".nc", ".lock")
 
-        logging.info("converting JSON to: %s" % out_temp)
+        logging.getLogger(__name__).info("converting %s into %s" % (in_envlog, out_fullday_netcdf))
         ela.mainProgramTrigger(in_envlog, out_temp)
 
         self.created += 1
@@ -69,7 +73,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
             shutil.move(out_temp, out_fullday_netcdf)
 
             # Push to geostreams
-            prepareDatapoint(connector, host, secret_key, resource, out_fullday_netcdf)
+            prepareDatapoint(connector, host, secret_key, resource, out_fullday_netcdf, self.batchsize)
         else:
             # Create lockfile to make sure we don't step on each others' toes
             total_wait = 0
