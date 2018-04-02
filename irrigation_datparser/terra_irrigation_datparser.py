@@ -6,17 +6,27 @@ import os
 from pyclowder.utils import CheckMessage
 from pyclowder.files import upload_metadata
 from terrautils.extractors import TerrarefExtractor, build_metadata
-from terrautils.geostreams import create_datapoint, create_sensor, create_stream, \
+from terrautils.geostreams import create_datapoints, create_sensor, create_stream, \
     get_stream_by_name, get_sensor_by_name
 
 from parser import *
 
 
+def add_local_arguments(parser):
+    # add any additional arguments to parser
+    parser.add_argument('--batchsize', type=int, default=3000,
+                        help="max number of datapoints to submit at a time")
+
 class IrrigationFileParser(TerrarefExtractor):
     def __init__(self):
         super(IrrigationFileParser, self).__init__()
 
+        # add any additional arguments to parser
+        add_local_arguments(self.parser)
+
         self.setup(sensor='irrigation_datparser')
+
+        self.batchsize = self.args.batchsize
 
     def check_message(self, connector, host, secret_key, resource, parameters):
         # TODO: Eventually make this more robust by checking contents
@@ -57,12 +67,24 @@ class IrrigationFileParser(TerrarefExtractor):
 
         # Process records in file
         records = parse_file(resource["local_paths"][0], main_coords)
+        total_dp = 0
+        datapoint_list = []
         for record in records:
-            record['source_file'] = resource["id"]
-            record['stream_id'] = str(stream_id)
-
-            create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
-                             record['start_time'], record['end_time'], record['properties'])
+            record['properties']['source_file'] = resource['id']
+            datapoint_list.append({
+                "start_time": record['start_time'],
+                "end_time": record['end_time'],
+                "type": "Point",
+                "geometry": record['geometry'],
+                "properties": record['properties']
+            })
+            if len(datapoint_list) > self.batchsize:
+                create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
+                total_dp += len(datapoint_list)
+                datapoint_list = []
+        if len(datapoint_list) > 0:
+            create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
+            total_dp += len(datapoint_list)
 
         # Mark dataset as processed
         metadata = build_metadata(host, self.extractor_info, resource['id'], {

@@ -8,7 +8,7 @@ from pyclowder.utils import CheckMessage
 from pyclowder.datasets import download_metadata, upload_metadata
 from terrautils.metadata import get_extractor_metadata
 from terrautils.extractors import TerrarefExtractor, is_latest_file, build_metadata
-from terrautils.geostreams import create_datapoint, create_sensor, create_stream, \
+from terrautils.geostreams import create_datapoints, create_sensor, create_stream, \
 	get_stream_by_name, get_sensor_by_name
 
 from parser import *
@@ -19,6 +19,8 @@ def add_local_arguments(parser):
 	parser.add_argument('--aggregation', dest="agg_cutoff", type=int, nargs='?',
 					default=(300),
 					help="minute chunks to aggregate records into (default is 5 mins)")
+	parser.add_argument('--batchsize', type=int, default=3000,
+						help="max number of datapoints to submit at a time")
 
 class MetDATFileParser(TerrarefExtractor):
 	def __init__(self):
@@ -32,6 +34,7 @@ class MetDATFileParser(TerrarefExtractor):
 
 		# assign other arguments
 		self.agg_cutoff = self.args.agg_cutoff
+		self.batchsize = self.args.batchsize
 
 	def check_message(self, connector, host, secret_key, resource, parameters):
 		if not is_latest_file(resource):
@@ -110,13 +113,24 @@ class MetDATFileParser(TerrarefExtractor):
 			aggregationRecords = aggregationResult['packages']
 
 			# Add props to each record.
+			datapoint_list = []
 			for record in aggregationRecords:
 				record['properties']['source'] = datasetUrl
 				record['properties']['source_file'] = fileId
-				record['stream_id'] = str(stream_id)
-				create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
-								record['start_time'], record['end_time'], record['properties'])
-				datapoint_count += 1
+				datapoint_list.append({
+					"start_time": record['start_time'],
+					"end_time": record['end_time'],
+					"type": "Point",
+					"geometry": record['geometry'],
+					"properties": record['properties']
+				})
+				if len(datapoint_list) > self.batchsize:
+					create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
+					datapoint_count += len(datapoint_list)
+					datapoint_list = []
+			if len(datapoint_list) > 0:
+				create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
+				datapoint_count += len(datapoint_list)
 
 			lastAggregatedFile = file
 

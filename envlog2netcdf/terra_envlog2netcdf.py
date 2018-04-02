@@ -12,18 +12,28 @@ from pyclowder.utils import CheckMessage
 from pyclowder.datasets import get_info, get_file_list
 from pyclowder.files import upload_to_dataset, upload_metadata, download_metadata
 from terrautils.extractors import TerrarefExtractor, build_dataset_hierarchy, build_metadata
-from terrautils.geostreams import get_sensor_by_name, create_datapoint, create_stream, \
+from terrautils.geostreams import get_sensor_by_name, create_datapoints, create_stream, \
     create_sensor, get_stream_by_name
 
 import environmental_logger_json2netcdf as ela
 
 
+def add_local_arguments(parser):
+    # add any additional arguments to parser
+    parser.add_argument('--batchsize', type=int, default=3000,
+                        help="max number of datapoints to submit at a time")
+
 class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
     def __init__(self):
         super(EnvironmentLoggerJSON2NetCDF, self).__init__()
 
+        # add any additional arguments to parser
+        add_local_arguments(self.parser)
+
         # parse command line and load default logging configuration
         self.setup(sensor='envlog_netcdf')
+
+        self.batchsize = self.args.batchsize
 
     def check_message(self, connector, host, secret_key, resource, parameters):
         # Only trigger extraction if the newly added file is a relevant JSON file
@@ -79,7 +89,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
                 os.remove(lockfile)
 
             # Push to geostreams
-            prepareDatapoint(connector, host, secret_key, resource, out_temp)
+            prepareDatapoint(connector, host, secret_key, resource, out_temp, self.batchsize)
             os.remove(out_temp)
 
         # Fetch dataset ID by dataset name if not provided
@@ -111,7 +121,7 @@ def _produce_attr_dict(netCDF_variable_obj):
 
     return [dict(result.items()+ {"value":str(data)}.items()) for data in netCDF_variable_obj[...]]
 
-def prepareDatapoint(connector, host, secret_key, resource, ncdf):
+def prepareDatapoint(connector, host, secret_key, resource, ncdf, batchsize):
     # TODO: Get this from Clowder
     coords = [-111.974304, 33.075576, 0]
     geom = {
@@ -143,7 +153,7 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                     memberlist = netCDF_handle.get_variables_by_attributes(sensor=stream)
                     for members in memberlist:
                         data_points = _produce_attr_dict(members)
-
+                        data_point_list = []
                         for index in range(len(data_points)):
                             dp_obj = data_points[index]
                             if dp_obj["sensor"] == stream:
@@ -151,8 +161,20 @@ def prepareDatapoint(connector, host, secret_key, resource, ncdf):
                                 time_point = (datetime.datetime(year=1970, month=1, day=1) + \
                                               datetime.timedelta(days=netCDF_handle.variables["time"][index])).strftime(time_format)
 
-                                create_datapoint(connector, host, secret_key, stream_id, geom,
-                                                                      time_point, time_point, dp_obj)
+                                data_point_list.append({
+                                    "start_time": time_point,
+                                    "end_time": time_point,
+                                    "type": "Point",
+                                    "geometry": geom,
+                                    "properties": dp_obj
+                                })
+
+                                if len(data_point_list) > batchsize:
+                                    create_datapoints(connector, host, secret_key, stream_id, data_point_list)
+                                    data_point_list = []
+
+                        if len(data_point_list) > 0:
+                            create_datapoints(connector, host, secret_key, stream_id, data_point_list)
                 except:
                     logging.error("NetCDF attribute not found: %s" % stream)
 

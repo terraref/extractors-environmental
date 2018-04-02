@@ -8,18 +8,28 @@ from pyclowder.utils import CheckMessage
 
 from pyclowder.files import upload_metadata, download_metadata
 from terrautils.extractors import TerrarefExtractor, build_metadata
-from terrautils.geostreams import create_datapoint, create_sensor, create_stream, \
+from terrautils.geostreams import create_datapoints, create_sensor, create_stream, \
 	get_stream_by_name, get_sensor_by_name
 
 from parser import *
 
 
+def add_local_arguments(parser):
+	# add any additional arguments to parser
+	parser.add_argument('--batchsize', type=int, default=3000,
+						help="max number of datapoints to submit at a time")
+
 class MetDATFileParser(TerrarefExtractor):
 	def __init__(self):
 		super(MetDATFileParser, self).__init__()
 
+		# add any additional arguments to parser
+		add_local_arguments(self.parser)
+
 		# parse command line and load default logging configuration
 		self.setup(sensor='energyfarm_datparser')
+
+		self.batchsize = self.args.batchsize
 
 	def check_message(self, connector, host, secret_key, resource, parameters):
 		# Weather CEN_Avg15.dat, Weather CEN_DayAvg.dat
@@ -97,19 +107,28 @@ class MetDATFileParser(TerrarefExtractor):
 			record['properties']['source_file'] = resource['id']
 			record['stream_id'] = str(stream_id)
 
-		dp = 0
+		total_dp = 0
+		datapoint_list = []
 		for record in records:
-			try:
-				create_datapoint(connector, host, secret_key, stream_id, record['geometry'],
-								record['start_time'], record['end_time'], record['properties'])
-				dp += 1
-			except:
-				logging.error("error creating datapoint at "+record['start_time'])
+			datapoint_list.append({
+				"start_time": record['start_time'],
+				"end_time": record['end_time'],
+				"type": "Point",
+				"geometry": record['geometry'],
+				"properties": record['properties']
+			})
+			if len(datapoint_list) > self.batchsize:
+				create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
+				total_dp += len(datapoint_list)
+				datapoint_list = []
+		if len(datapoint_list) > 0:
+			create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
+			total_dp += len(datapoint_list)
 
 		# Mark dataset as processed
 		metadata = build_metadata(host, self.extractor_info, resource['id'], {
 			"last processed time": records[-1]["end_time"],
-			"datapoints_created": datapoint_count + dp}, 'file')
+			"datapoints_created": datapoint_count + total_dp}, 'file')
 		upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
 		self.end_message()
