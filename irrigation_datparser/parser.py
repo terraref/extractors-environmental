@@ -2,12 +2,13 @@ import datetime
 import dateutil.tz
 import csv
 import json
+import cfunits
 
-
-def gallon2mm(value):
-    # gallons -> lit = kg -> kg m-2 s-1
+def gallon2liter(value):
     if value:
-        return (int(value)*3.78541)/((20*200)*(24*60*60))
+        return Units.conform(int(value), 
+                             Units('gallon / day'),
+                             Units('liter / second'), inplace=True)
     return 0.0
 
 # Parse CSV file
@@ -37,7 +38,7 @@ def parse_file(filepath, main_coords):
             results.append({
                 'start_time': start_time,
 		        'end_time': end_time,
-                'properties' : {'irrigation_flux':gallon2mm(row['Gallons'])},
+                'properties' : {'irrigation_transport':gallon2liter(row['Gallons'])},
                 'type': 'Feature',
                 'geometry': {
                     'type': 'Point',
