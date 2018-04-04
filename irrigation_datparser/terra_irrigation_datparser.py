@@ -36,7 +36,7 @@ class IrrigationFileParser(TerrarefExtractor):
         return CheckMessage.ignore
 
     def process_message(self, connector, host, secret_key, resource, parameters):
-        self.start_message()
+        self.start_message(resource)
 
         # TODO: Get this from Clowder fixed metadata]
         main_coords = [-111.974304, 33.075576, 361]
@@ -91,7 +91,7 @@ class IrrigationFileParser(TerrarefExtractor):
             "datapoints_created": len(records)}, 'file')
         upload_metadata(connector, host, secret_key, resource['parent']['id'], metadata)
 
-        self.end_message()
+        self.end_message(resource)
 
 if __name__ == "__main__":
     extractor = IrrigationFileParser()
