@@ -6,6 +6,10 @@ RUN useradd -u 49044 extractor \
     && mkdir -p /home/extractor/sites/ua-mac/raw_data \
     && chown -R extractor /home/extractor
 
+RUN apt-get update && apt-get install -y udunits-bin libudunits2-dev \
+    && pip install cfunits
+
+
 # command to run when starting docker
 COPY entrypoint.sh extractor_info.json *.py /home/extractor/
 
