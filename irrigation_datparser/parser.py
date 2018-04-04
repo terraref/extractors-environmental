@@ -1,8 +1,7 @@
 import datetime
 import dateutil.tz
 import csv
-import json
-import cfunits
+from cfunits import Units
 
 def gallon2liter(value):
     if value:
@@ -35,20 +34,16 @@ def parse_file(filepath, main_coords):
             except:
                 continue
 
-            results.append({
-                'start_time': start_time,
-		        'end_time': end_time,
-                'properties' : {'irrigation_transport':gallon2liter(row['Gallons'])},
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': main_coords
-                }
-            })
+            if 'Actual' in row and row['Actual'] != '':
+                results.append({
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'properties' : {'irrigation_transport':gallon2liter(row['Actual'])},
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': main_coords
+                    }
+                })
 
         return results
-
-
-if __name__ == "__main__":
-    infile = "flowmetertotals_March-2017.csv"
-    print json.dumps(parse_file(infile)[:5])
