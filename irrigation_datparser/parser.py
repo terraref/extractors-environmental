@@ -34,16 +34,17 @@ def parse_file(filepath, main_coords):
             except:
                 continue
 
-            results.append({
-                'start_time': start_time,
-		        'end_time': end_time,
-                'properties' : {'irrigation_flux':gallon2mm(row['Gallons'])},
-                'type': 'Feature',
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': main_coords
-                }
-            })
+            if 'Actual' in row and row['Actual'] != '':
+                results.append({
+                    'start_time': start_time,
+                    'end_time': end_time,
+                    'properties' : {'irrigation_flux':gallon2mm(row['Actual'])},
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': main_coords
+                    }
+                })
 
         return results
 
