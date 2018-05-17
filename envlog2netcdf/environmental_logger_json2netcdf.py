@@ -113,7 +113,7 @@ _NAMES = {
     'sunDirection' : 'Solar zenith angle',
     'temperature'  : 'Air Temperature',
     'relHumidity'  : 'Relative Humidity',
-    'precipitation': 'Precipation Rate',
+    'precipitation': 'Precipitation Rate',
     'windDirection': 'Wind Direction',
     'windVelocity' : 'Wind Speed'
 }
