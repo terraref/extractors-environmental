@@ -7,21 +7,27 @@ import shutil
 import subprocess
 import time
 from netCDF4 import Dataset
+from collections import OrderedDict
 
 from pyclowder.utils import CheckMessage
 from pyclowder.datasets import get_info, get_file_list
-from pyclowder.files import upload_to_dataset, upload_metadata, download_metadata
+from pyclowder.files import upload_to_dataset, upload_metadata, download_metadata, download as download_file
 from terrautils.extractors import TerrarefExtractor, build_dataset_hierarchy, build_metadata
 from terrautils.geostreams import get_sensor_by_name, create_datapoints, create_stream, \
     create_sensor, get_stream_by_name
 
 import environmental_logger_json2netcdf as ela
 
-
 def add_local_arguments(parser):
     # add any additional arguments to parser
     parser.add_argument('--batchsize', type=int, default=3000,
                         help="max number of datapoints to submit at a time")
+
+def get_hour(filename):
+    timestamp = filename.split('_')[1]
+    hour = timestamp.split('-')[0]
+    return int(hour)
+
 
 class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
     def __init__(self):
@@ -61,6 +67,8 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         logging.info("converting JSON to: %s" % out_temp)
         ela.mainProgramTrigger(in_envlog, out_temp)
 
+        full_file = 'full_file.json'
+
         self.created += 1
         self.bytes += os.path.getsize(out_temp)
 
@@ -98,6 +106,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
                                   leaf_ds_name=self.sensors.get_display_name()+' - '+timestamp)
         ds_files = get_file_list(connector, host, secret_key, target_dsid)
         found_full = False
+
         for f in ds_files:
             if f['filename'] == os.path.basename(out_fullday_netcdf):
                 found_full = True
@@ -109,6 +118,34 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
             "output_dataset": target_dsid
         }, 'file')
         upload_metadata(connector, host, secret_key, resource['id'], ext_meta)
+
+        # ADDED BY TODD
+
+        if len(ds_files) == 23 and not os.path.isfile(full_file):
+            json_for_files = dict()
+            file_names = []
+            for ds_file in ds_files:
+                current_file_name = ds_file['filename']
+                file_names.append(current_file_name)
+                file_as_json = download_file(connector, host, secret_key, ds_file['id'], ext='.json')
+                with open(file_as_json, 'r') as f:
+                    content = f.read()
+                    json_for_files[current_file_name] = content
+            # SORT the dictionary
+            sorted_json = OrderedDict(sorted(json_for_files.items(), key=lambda t: get_hour(t[0])))
+        if len(ds_files) == 24:
+            json_for_files = dict()
+            file_names = []
+            for ds_file in ds_files:
+                current_file_name = ds_file['filename']
+                file_names.append(current_file_name)
+                file_as_json = download_file(connector, host, secret_key, ds_file['id'], ext='.json')
+                with open(file_as_json, 'r') as f:
+                    content = f.read()
+                    json_for_files[current_file_name] = content
+            # SORT the dictionary
+            sorted_json = OrderedDict(sorted(json_for_files.items(), key=lambda t: get_hour(t[0])))
+
 
         self.end_message()
 
