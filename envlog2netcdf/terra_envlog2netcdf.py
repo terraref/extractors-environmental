@@ -8,6 +8,7 @@ import subprocess
 import time
 from netCDF4 import Dataset
 from collections import OrderedDict
+import json
 
 from pyclowder.utils import CheckMessage
 from pyclowder.datasets import get_info, get_file_list
@@ -122,6 +123,7 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         # ADDED BY TODD
 
         if len(ds_files) == 23 and not os.path.isfile(full_file):
+            hourly_json_files = []
             json_for_files = dict()
             file_names = []
             for ds_file in ds_files:
@@ -130,9 +132,17 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
                 file_as_json = download_file(connector, host, secret_key, ds_file['id'], ext='.json')
                 with open(file_as_json, 'r') as f:
                     content = f.read()
-                    json_for_files[current_file_name] = content
+                    json_for_files[current_file_name] = json.loads(content)
             # SORT the dictionary
             sorted_json = OrderedDict(sorted(json_for_files.items(), key=lambda t: get_hour(t[0])))
+            keys = sorted_json.keys()
+            for key in keys:
+                value = sorted_json[key]
+                hourly_json_files.append(value)
+                with open(full_file, 'w') as f:
+                    f.write(json.dumps(hourly_json_files))
+                    f.close()
+
         if len(ds_files) == 24:
             json_for_files = dict()
             file_names = []
@@ -142,12 +152,19 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
                 file_as_json = download_file(connector, host, secret_key, ds_file['id'], ext='.json')
                 with open(file_as_json, 'r') as f:
                     content = f.read()
-                    json_for_files[current_file_name] = content
+                    json_for_files[current_file_name] = json.loads(content)
             # SORT the dictionary
             sorted_json = OrderedDict(sorted(json_for_files.items(), key=lambda t: get_hour(t[0])))
-
+            keys = sorted_json.keys()
+            for key in keys:
+                value = sorted_json[key]
+                hourly_json_files.append(value)
+                with open(full_file, 'w') as f:
+                    f.write(json.dumps(hourly_json_files))
+                    f.close()
 
         self.end_message()
+
 
 def _produce_attr_dict(netCDF_variable_obj):
     '''
