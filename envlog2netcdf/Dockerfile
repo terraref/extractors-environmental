@@ -1,11 +1,8 @@
-FROM terraref/terrautils
+FROM terraref/terrautils:1.4
 MAINTAINER Max Burnette <mburnet2@illinois.edu>
 
 # Install any programs needed
-RUN useradd -u 49044 extractor \
-    && mkdir -p /home/extractor/sites/ua-mac/raw_data \
-    && mkdir -p /home/extractor/sites/ua-mac/Level_1/EnvironmentLogger \
-    && chown -R extractor /home/extractor
+RUN useradd -u 49044 extractor
 
 RUN apt-get -y update && \
     apt-get -y install nco && \
