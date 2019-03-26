@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import logging
 import urlparse
 
 from pyclowder.utils import CheckMessage
@@ -42,17 +41,17 @@ class MetDATFileParser(TerrarefExtractor):
 
 		# Check for expected input files before beginning processing
 		if len(get_all_files(resource)) >= 23:
-			md = download_metadata(connector, host, secret_key, resource['id'])
-			if get_extractor_metadata(md, self.extractor_info['name']) and not self.overwrite:
-				logging.info('skipping %s, dataset already handled' % resource['id'])
-				return CheckMessage.ignore
+			#md = download_metadata(connector, host, secret_key, resource['id'])
+			#if get_extractor_metadata(md, self.extractor_info['name']) and not self.overwrite:
+			#	self.log_skip(resource, 'dataset already handled' % resource['id'])
+			#	return CheckMessage.ignore
 			return CheckMessage.download
 		else:
-			logging.info('skipping %s, not all input files are ready' % resource['id'])
+			self.log_skip(resource, 'not all input files are ready')
 			return CheckMessage.ignore
 
 	def process_message(self, connector, host, secret_key, resource, parameters):
-		self.start_message()
+		self.start_message(resource)
 
 		# TODO: Get this from Clowder fixed metadata
 		geom = {
@@ -73,7 +72,7 @@ class MetDATFileParser(TerrarefExtractor):
 			sensor_id = sensor_data['id']
 
 		# Get stream or create if not found
-		stream_name = "Weather Observations"
+		stream_name = "Weather Observations (5 min bins)"
 		stream_data = get_stream_by_name(connector, host, secret_key, stream_name)
 		if not stream_data:
 			stream_id = create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
@@ -139,7 +138,7 @@ class MetDATFileParser(TerrarefExtractor):
 			"datapoints_created": datapoint_count}, 'dataset')
 		upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
-		self.end_message()
+		self.end_message(resource)
 
 # Find as many expected files as possible and return the set.
 def get_all_files(resource):
