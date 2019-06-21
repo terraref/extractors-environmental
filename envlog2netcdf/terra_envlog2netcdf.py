@@ -56,7 +56,8 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
             if get_extractor_metadata(md, self.extractor_info['name'], self.extractor_info['version']):
                 timestamp = resource['name'].split(" - ")[1]
                 out_fullday_netcdf = self.sensors.create_sensor_path(timestamp)
-                if file_exists(out_fullday_netcdf):
+                out_fullday_csv = out_fullday_netcdf.replace(".nc", "_geo.csv")
+                if file_exists(out_fullday_netcdf) and file_exists(out_fullday_csv):
                     self.log_skip(resource, "metadata v%s and outputs already exist" % self.extractor_info['version'])
                     return CheckMessage.ignore
             return CheckMessage.download
@@ -82,49 +83,51 @@ class EnvironmentLoggerJSON2NetCDF(TerrarefExtractor):
         out_fullday_netcdf = self.sensors.create_sensor_path(timestamp)
         temp_out_full = os.path.join(os.path.dirname(out_fullday_netcdf), "temp_full.nc")
         temp_out_single = temp_out_full.replace("_full.nc", "_single.nc")
+        geo_csv = out_fullday_netcdf.replace(".nc", "_geo.csv")
 
-        for json_file in json_files:
-            self.log_info(resource, "converting %s to netCDF & appending" % os.path.basename(json_file))
-            ela.mainProgramTrigger(json_file, temp_out_single)
-            cmd = "ncrcat --record_append %s %s" % (temp_out_single, temp_out_full)
-            subprocess.call([cmd], shell=True)
-            os.remove(temp_out_single)
+        if not file_exists(temp_out_full):
+            for json_file in json_files:
+                self.log_info(resource, "converting %s to netCDF & appending" % os.path.basename(json_file))
+                ela.mainProgramTrigger(json_file, temp_out_single)
+                cmd = "ncrcat --record_append %s %s" % (temp_out_single, temp_out_full)
+                subprocess.call([cmd], shell=True)
+                os.remove(temp_out_single)
 
-        shutil.move(temp_out_full, out_fullday_netcdf)
-        self.created += 1
-        self.bytes += os.path.getsize(out_fullday_netcdf)
+            shutil.move(temp_out_full, out_fullday_netcdf)
+            self.created += 1
+            self.bytes += os.path.getsize(out_fullday_netcdf)
 
         # Write out geostreams.csv
-        self.log_info(resource, "writing geostreams CSV")
-        geo_csv = out_fullday_netcdf.replace(".nc", "_geo.csv")
-        geo_file = open(geo_csv, 'w')
-        geo_file.write(','.join(['site', 'trait', 'lat', 'lon', 'dp_time', 'source', 'value', 'timestamp']) + '\n')
-        with Dataset(out_fullday_netcdf, "r") as ncdf:
-            streams = set([sensor_info.name for sensor_info in ncdf.variables.values() if sensor_info.name.startswith('sensor')])
-            for stream in streams:
-                if stream != "sensor_spectrum":
-                    try:
-                        memberlist = ncdf.get_variables_by_attributes(sensor=stream)
-                        for members in memberlist:
-                            data_points = _produce_attr_dict(members)
-                            for index in range(len(data_points)):
-                                dp_obj = data_points[index]
-                                if dp_obj["sensor"] == stream:
-                                    time_format = "%Y-%m-%dT%H:%M:%S-07:00"
-                                    time_point = (datetime.datetime(year=1970, month=1, day=1) + \
-                                                  datetime.timedelta(days=ncdf.variables["time"][index])).strftime(time_format)
+        if not file_exists(geo_csv):
+            self.log_info(resource, "writing geostreams CSV")
+            geo_file = open(geo_csv, 'w')
+            geo_file.write(','.join(['site', 'trait', 'lat', 'lon', 'dp_time', 'source', 'value', 'timestamp']) + '\n')
+            with Dataset(out_fullday_netcdf, "r") as ncdf:
+                streams = set([sensor_info.name for sensor_info in ncdf.variables.values() if sensor_info.name.startswith('sensor')])
+                for stream in streams:
+                    if stream != "sensor_spectrum":
+                        try:
+                            memberlist = ncdf.get_variables_by_attributes(sensor=stream)
+                            for members in memberlist:
+                                data_points = _produce_attr_dict(members)
+                                for index in range(len(data_points)):
+                                    dp_obj = data_points[index]
+                                    if dp_obj["sensor"] == stream:
+                                        time_format = "%Y-%m-%dT%H:%M:%S-07:00"
+                                        time_point = (datetime.datetime(year=1970, month=1, day=1) + \
+                                                      datetime.timedelta(days=ncdf.variables["time"][index])).strftime(time_format)
 
-                                    geo_file.write(','.join(["Full Field - Environmental Logger",
-                                                             "(EL) %s" % stream,
-                                                             str(33.075576),
-                                                             str(-111.974304),
-                                                             time_point,
-                                                             host + ("" if host.endswith("/") else "/") + "datasets/" + resource['id'],
-                                                             '"%s"' % json.dumps(dp_obj).replace('"', '""'),
-                                                             timestamp]) + '\n')
+                                        geo_file.write(','.join(["Full Field - Environmental Logger",
+                                                                 "(EL) %s" % stream,
+                                                                 str(33.075576),
+                                                                 str(-111.974304),
+                                                                 time_point,
+                                                                 host + ("" if host.endswith("/") else "/") + "datasets/" + resource['id'],
+                                                                 '"%s"' % json.dumps(dp_obj).replace('"', '""'),
+                                                                 timestamp]) + '\n')
 
-                    except:
-                        self.log_error(resource, "NetCDF attribute not found: %s" % stream)
+                        except:
+                            self.log_error(resource, "NetCDF attribute not found: %s" % stream)
 
         # Fetch dataset ID by dataset name if not provided
         target_dsid = build_dataset_hierarchy_crawl(host, secret_key, self.clowder_user, self.clowder_pass, self.clowderspace,

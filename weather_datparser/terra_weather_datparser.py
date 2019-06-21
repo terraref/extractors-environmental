@@ -2,6 +2,7 @@
 
 import os
 import urlparse
+import math
 
 from pyclowder.utils import CheckMessage
 from pyclowder.datasets import download_metadata, upload_metadata
@@ -41,10 +42,10 @@ class MetDATFileParser(TerrarefExtractor):
 
 		# Check for expected input files before beginning processing
 		if len(get_all_files(resource)) >= 23:
-			#md = download_metadata(connector, host, secret_key, resource['id'])
-			#if get_extractor_metadata(md, self.extractor_info['name']) and not self.overwrite:
-			#	self.log_skip(resource, 'dataset already handled' % resource['id'])
-			#	return CheckMessage.ignore
+			md = download_metadata(connector, host, secret_key, resource['id'])
+			if get_extractor_metadata(md, self.extractor_info['name'], self.extractor_info['version']):
+				self.log_skip(resource, "metadata v%s already exists" % self.extractor_info['version'])
+				return CheckMessage.ignore
 			return CheckMessage.download
 		else:
 			self.log_skip(resource, 'not all input files are ready')
@@ -116,12 +117,18 @@ class MetDATFileParser(TerrarefExtractor):
 			for record in aggregationRecords:
 				record['properties']['source'] = datasetUrl
 				record['properties']['source_file'] = fileId
+				cleaned_properties = {}
+				# Check for nan values from the stream
+				for prop in record['properties']:
+					val = record['properties'][prop]
+					if not (type(val) == float and math.isnan(val)):
+						cleaned_properties[prop] = val
 				datapoint_list.append({
 					"start_time": record['start_time'],
 					"end_time": record['end_time'],
 					"type": "Point",
 					"geometry": record['geometry'],
-					"properties": record['properties']
+					"properties": cleaned_properties
 				})
 				if len(datapoint_list) > self.batchsize:
 					create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
