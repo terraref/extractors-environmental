@@ -1,15 +1,15 @@
 {
     "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
     "name": "terra.environmental.envlog2netcdf",
-    "version": "1.0",
+    "version": "1.1",
     "description": "EnvironmentLogger to NetCDF extractor",
     "author": "Max Burnette <mburnet2@illinois.edu>",
     "contributors": [],
     "contexts": [],
     "repository": {"repType": "git", "repUrl": "https://github.com/terraref/extractors-environmental.git"},
     "process": {
-        "file": [
-            "application/json"
+        "dataset": [
+            "file.added"
         ]
     },
     "external_services": [],

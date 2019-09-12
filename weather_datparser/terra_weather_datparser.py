@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import os
-import logging
 import urlparse
+import math
 
 from pyclowder.utils import CheckMessage
 from pyclowder.datasets import download_metadata, upload_metadata
@@ -43,16 +43,16 @@ class MetDATFileParser(TerrarefExtractor):
 		# Check for expected input files before beginning processing
 		if len(get_all_files(resource)) >= 23:
 			md = download_metadata(connector, host, secret_key, resource['id'])
-			if get_extractor_metadata(md, self.extractor_info['name']) and not self.overwrite:
-				logging.info('skipping %s, dataset already handled' % resource['id'])
+			if get_extractor_metadata(md, self.extractor_info['name'], self.extractor_info['version']):
+				self.log_skip(resource, "metadata v%s already exists" % self.extractor_info['version'])
 				return CheckMessage.ignore
 			return CheckMessage.download
 		else:
-			logging.info('skipping %s, not all input files are ready' % resource['id'])
+			self.log_skip(resource, 'not all input files are ready')
 			return CheckMessage.ignore
 
 	def process_message(self, connector, host, secret_key, resource, parameters):
-		self.start_message()
+		self.start_message(resource)
 
 		# TODO: Get this from Clowder fixed metadata
 		geom = {
@@ -73,7 +73,7 @@ class MetDATFileParser(TerrarefExtractor):
 			sensor_id = sensor_data['id']
 
 		# Get stream or create if not found
-		stream_name = "Weather Observations"
+		stream_name = "Weather Observations (5 min bins)"
 		stream_data = get_stream_by_name(connector, host, secret_key, stream_name)
 		if not stream_data:
 			stream_id = create_stream(connector, host, secret_key, stream_name, sensor_id, geom)
@@ -117,12 +117,18 @@ class MetDATFileParser(TerrarefExtractor):
 			for record in aggregationRecords:
 				record['properties']['source'] = datasetUrl
 				record['properties']['source_file'] = fileId
+				cleaned_properties = {}
+				# Check for nan values from the stream
+				for prop in record['properties']:
+					val = record['properties'][prop]
+					if not (type(val) == float and math.isnan(val)):
+						cleaned_properties[prop] = val
 				datapoint_list.append({
 					"start_time": record['start_time'],
 					"end_time": record['end_time'],
 					"type": "Point",
 					"geometry": record['geometry'],
-					"properties": record['properties']
+					"properties": cleaned_properties
 				})
 				if len(datapoint_list) > self.batchsize:
 					create_datapoints(connector, host, secret_key, stream_id, datapoint_list)
@@ -139,7 +145,7 @@ class MetDATFileParser(TerrarefExtractor):
 			"datapoints_created": datapoint_count}, 'dataset')
 		upload_metadata(connector, host, secret_key, resource['id'], metadata)
 
-		self.end_message()
+		self.end_message(resource)
 
 # Find as many expected files as possible and return the set.
 def get_all_files(resource):
