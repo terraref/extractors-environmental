@@ -7,12 +7,8 @@
       "name": "David LeBauer"
     },
     {
-      "affiliation": "Donald Danforth Plant Science Center",
-      "name": "Zongyang Li"
-    },
-    {
-      "affiliation": "Saint Louis University",
-      "name": "Sidike Paheding"
+      "affiliation": "University of California, Irvine",
+      "name": "Jerome Mao"
     },
     {
       "affiliation": "National Center for Supercomputing Applications",
@@ -24,8 +20,8 @@
       "name": "Max Burnette"
     },
     {
-      "affiliation": "LemnaTec",
-      "name": "Solmaz Hajmohammadi"
+      "affiliation": "National Center for Supercomputing Applications",
+      "name": "Xingchen Hong"
     }
   ],
   "upload_type": "software",
