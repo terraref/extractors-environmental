@@ -3,8 +3,8 @@
   "description": "This repository contains Clowder extractors used to process environmental data for the TERRA-REF project.",
   "creators": [
     {
-      "affiliation": "University of Arizona",
-      "name": "David LeBauer"
+      "affiliation": "National Center for Supercomputing Applications",
+      "name": "Xingchen Hong"
     },
     {
       "affiliation": "University of California, Irvine",
@@ -12,16 +12,11 @@
     },
     {
       "affiliation": "National Center for Supercomputing Applications",
-      "name": "Rob Kooper",
-      "orcid": "0000-0002-5781-7287"
-    },
-    {
-      "affiliation": "National Center for Supercomputing Applications",
       "name": "Max Burnette"
     },
     {
-      "affiliation": "National Center for Supercomputing Applications",
-      "name": "Xingchen Hong"
+      "affiliation": "University of Arizona",
+      "name": "David LeBauer"
     }
   ],
   "upload_type": "software",
