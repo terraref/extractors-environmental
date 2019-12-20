@@ -1,0 +1,31 @@
+{
+  "title": "TERRA-REF Environmental Extractors",
+  "description": "This repository contains Clowder extractors used to process environmental data for the TERRA-REF project.",
+  "creators": [
+    {
+      "affiliation": "National Center for Supercomputing Applications",
+      "name": "Xingchen Hong"
+    },
+    {
+      "affiliation": "University of California, Irvine",
+      "name": "Jerome Mao"
+    },
+    {
+      "affiliation": "National Center for Supercomputing Applications",
+      "name": "Max Burnette"
+    },
+    {
+      "affiliation": "University of Arizona",
+      "name": "David LeBauer"
+    }
+  ],
+  "upload_type": "software",
+  "license": "BSD-3-Clause",
+  "access_right": "open",
+  "keywords": [
+    "TERRA-REF",
+    "clowder",
+    "Image Processing"
+  ],
+  "notes": ""
+}
